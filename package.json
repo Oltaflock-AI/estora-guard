@@ -16,11 +16,13 @@
     "date-fns": "latest",
     "lucide-react": "latest",
     "next": "^14.2.0",
+    "pdf-parse": "^2.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
