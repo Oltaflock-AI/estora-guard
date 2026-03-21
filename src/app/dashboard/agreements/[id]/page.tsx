@@ -26,6 +26,9 @@ import type {
   ContractEscrow,
   ContractStatus,
 } from '@/lib/types';
+import WireFraudBanner from '@/components/security/WireFraudBanner';
+import ClosingProximityFlag from '@/components/security/ClosingProximityFlag';
+import { isContractLocked, lockdownMessage } from '@/lib/contract-lockdown';
 import type { FieldIssue } from '@/components/EditCanvas';
 import type { ValidationIssue } from '@/components/SectionNavigator';
 
@@ -334,11 +337,7 @@ export default function AgreementWorkspacePage() {
     return map;
   }, [issues]);
 
-  const isLocked =
-    contract?.status === 'closed' ||
-    contract?.status === 'cancelled' ||
-    contract?.status === 'defaulted_buyer' ||
-    contract?.status === 'defaulted_seller';
+  const isLocked = contract ? isContractLocked(contract.status as ContractStatus) : false;
 
   const performSave = useCallback(async (valuesToSave: Record<string, unknown>, baseValues: Record<string, unknown>) => {
     setSaveState('saving');
@@ -554,8 +553,17 @@ export default function AgreementWorkspacePage() {
       {isLocked && (
         <div className="bg-surface-sunken border-b border-border px-6 py-2 text-center">
           <p className="text-xs text-secondary">
-            This agreement is <span className="font-medium">{contract.status.replace(/_/g, ' ')}</span> and cannot be edited.
+            {lockdownMessage(contract.status as ContractStatus) ??
+              `This agreement is ${contract.status.replace(/_/g, ' ')} and cannot be edited.`}
           </p>
+        </div>
+      )}
+
+      {/* ── Security banners ──────────────────────── */}
+      {!isLocked && (
+        <div className="px-4 lg:px-6 pt-2 space-y-2">
+          <ClosingProximityFlag closingDate={contract.closing_date} />
+          {activeSection === 'escrow' && <WireFraudBanner variant="page" />}
         </div>
       )}
 

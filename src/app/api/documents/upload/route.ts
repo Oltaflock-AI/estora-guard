@@ -4,7 +4,21 @@ import { runExtraction, PdfValidationError, ExtractionError } from '@/lib/servic
 import { createAuditEvent } from '@/lib/services/audit-service';
 import type { Database } from '@/lib/supabase/database.types';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+
+function isPdfMagicBytes(buffer: Buffer): boolean {
+  if (buffer.length < 5) return false;
+  return PDF_MAGIC_BYTES.every((byte, i) => buffer[i] === byte);
+}
+
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[^\w.\-]/g, '_')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^\.+/, '')
+    .slice(0, 200);
+}
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -45,12 +59,20 @@ export async function POST(request: NextRequest) {
   }
 
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: 'File must be under 10 MB.' }, { status: 400 });
+    return NextResponse.json({ error: 'File must be under 25 MB.' }, { status: 400 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const storagePath = `uploads/${user.id}/${Date.now()}_${file.name}`;
+  if (!isPdfMagicBytes(buffer)) {
+    return NextResponse.json(
+      { error: 'File does not appear to be a valid PDF (magic byte check failed).' },
+      { status: 400 }
+    );
+  }
+
+  const safeName = sanitizeFilename(file.name);
+  const storagePath = `uploads/${user.id}/${Date.now()}_${safeName}`;
 
   const { error: storageError } = await serviceClient.storage
     .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents')
@@ -67,7 +89,7 @@ export async function POST(request: NextRequest) {
   const docInsert: Database['public']['Tables']['documents']['Insert'] = {
     org_id: orgId,
     uploaded_by: user.id,
-    filename: file.name,
+    filename: safeName,
     storage_path: storagePath,
     status: 'processing',
   };
@@ -133,7 +155,9 @@ export async function POST(request: NextRequest) {
       entityType: 'document',
       entityId: doc.id,
       detail: {
-        filename: file.name,
+        filename: safeName,
+        originalFilename: file.name,
+        fileSize: file.size,
         fieldCount: result.fields.length,
         riskFlagCount: result.riskFlags.length,
       },

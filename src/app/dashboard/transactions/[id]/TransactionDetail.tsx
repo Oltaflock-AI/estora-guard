@@ -18,6 +18,8 @@ import HealthBar from '@/components/HealthBar';
 import TimelineView from '@/components/TimelineView';
 import TaskList from '@/components/TaskList';
 import RiskFlagPanel from '@/components/RiskFlagPanel';
+import WireFraudBanner from '@/components/security/WireFraudBanner';
+import ClosingProximityFlag from '@/components/security/ClosingProximityFlag';
 import {
   formatCurrency,
   formatDate,
@@ -188,6 +190,8 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
         </div>
       </div>
 
+      <ClosingProximityFlag closingDate={contract.closing_date} className="mb-4" />
+
       {/* ── Three-column layout ─────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Column 1: Timeline */}
@@ -324,6 +328,7 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
                   {escrow && (
                     <>
                       <div className="h-px bg-border my-1" />
+                      <WireFraudBanner variant="inline" className="my-2" />
                       <div className="flex justify-between">
                         <span className="text-xs text-secondary">
                           Escrow ({escrow.bank_name})

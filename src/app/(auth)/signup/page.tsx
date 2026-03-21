@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff, UserPlus, AlertTriangle, CheckCircle } from 'lucide-react';
+import PasswordStrength from '@/components/security/PasswordStrength';
 
 const MIN_PASSWORD_LENGTH = 14;
 
@@ -150,9 +151,7 @@ export default function SignupPage() {
                 )}
               </button>
             </div>
-            <p className="text-xs text-disabled mt-1">
-              Minimum {MIN_PASSWORD_LENGTH} characters
-            </p>
+            <PasswordStrength password={password} minLength={MIN_PASSWORD_LENGTH} />
           </div>
 
           <div>

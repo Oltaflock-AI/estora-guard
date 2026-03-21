@@ -15,6 +15,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import IdleTimeoutGuard from '@/components/security/IdleTimeoutGuard';
 import type { UserProfile } from '@/lib/auth-helpers';
 
 interface DashboardShellProps {
@@ -84,6 +85,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
   return (
     <div className="min-h-screen bg-surface">
+      <IdleTimeoutGuard />
       {/* ── Top Header ────────────────────────────── */}
       <header className="h-14 bg-surface-raised border-b border-border flex items-center justify-between px-4 lg:px-6 fixed top-0 left-0 right-0 z-40">
         <div className="flex items-center gap-3">
