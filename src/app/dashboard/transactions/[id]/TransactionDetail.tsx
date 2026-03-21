@@ -186,6 +186,13 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
                 </p>
               </div>
             )}
+            <Link
+              href={`/dashboard/agreements/${contract.id}`}
+              className="btn-primary gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Edit Agreement
+            </Link>
           </div>
         </div>
       </div>

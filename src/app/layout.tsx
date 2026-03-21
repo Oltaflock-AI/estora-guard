@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Playfair_Display, JetBrains_Mono } from 'next/font/google';
+import OfflineBanner from '@/components/OfflineBanner';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -38,7 +39,10 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${playfairDisplay.variable} ${jetbrainsMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <OfflineBanner />
+        {children}
+      </body>
     </html>
   );
 }

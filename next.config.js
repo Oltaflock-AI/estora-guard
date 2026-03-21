@@ -6,6 +6,8 @@ const nextConfig = {
     },
   },
 
+  poweredByHeader: false,
+
   async headers() {
     return [
       {

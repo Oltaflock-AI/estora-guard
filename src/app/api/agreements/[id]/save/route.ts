@@ -49,7 +49,7 @@ export async function POST(
     return NextResponse.json({ error: 'Contract not found.' }, { status: 404 });
   }
 
-  const contract = contractRow as {
+  const contract = contractRow as unknown as {
     id: string;
     status: string;
     property: { id: string };

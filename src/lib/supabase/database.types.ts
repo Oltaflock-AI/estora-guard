@@ -51,6 +51,7 @@ export interface Database {
           masked_tax_id?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       properties: {
         Row: {
@@ -109,6 +110,7 @@ export interface Database {
           as_is_sale?: boolean;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contracts: {
         Row: {
@@ -215,6 +217,7 @@ export interface Database {
           source_document_id?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_personal_property: {
         Row: {
@@ -243,6 +246,7 @@ export interface Database {
           notes?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_permitted_exceptions: {
         Row: {
@@ -268,6 +272,7 @@ export interface Database {
           details?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_violations: {
         Row: {
@@ -299,6 +304,7 @@ export interface Database {
           resolved?: boolean;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_mortgages: {
         Row: {
@@ -345,6 +351,7 @@ export interface Database {
           subordinate_to_future_financing?: boolean;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_escrow: {
         Row: {
@@ -385,6 +392,7 @@ export interface Database {
           release_terms?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_closing_conditions: {
         Row: {
@@ -416,6 +424,7 @@ export interface Database {
           notes?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       contract_apportionments: {
         Row: {
@@ -456,6 +465,7 @@ export interface Database {
           notes?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -484,6 +494,7 @@ export interface Database {
           person_id?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       organizations: {
         Row: {
@@ -506,6 +517,7 @@ export interface Database {
           slug?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       memberships: {
         Row: {
@@ -531,6 +543,7 @@ export interface Database {
           role?: 'agent' | 'coordinator' | 'broker' | 'attorney' | 'admin' | 'auditor';
           updated_at?: string;
         };
+        Relationships: [];
       };
       documents: {
         Row: {
@@ -574,6 +587,7 @@ export interface Database {
           status?: 'pending' | 'processing' | 'done' | 'failed';
           updated_at?: string;
         };
+        Relationships: [];
       };
       extractions: {
         Row: {
@@ -602,6 +616,7 @@ export interface Database {
           confidence?: number | null;
           page_ref?: number | null;
         };
+        Relationships: [];
       };
       risk_flags: {
         Row: {
@@ -642,6 +657,7 @@ export interface Database {
           acknowledged_at?: string | null;
           acknowledged_note?: string | null;
         };
+        Relationships: [];
       };
       tasks: {
         Row: {
@@ -688,6 +704,7 @@ export interface Database {
           dedupe_key?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       timeline_items: {
         Row: {
@@ -725,6 +742,7 @@ export interface Database {
           sort_order?: number;
           updated_at?: string;
         };
+        Relationships: [];
       };
       audit_events: {
         Row: {
@@ -754,6 +772,7 @@ export interface Database {
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
       };
       event_logs: {
         Row: {
@@ -782,6 +801,7 @@ export interface Database {
           entity_id?: string | null;
           detail?: Json | null;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -810,5 +830,88 @@ export interface Database {
       funds_type: 'cash' | 'certified_check' | 'official_bank_check' | 'wire' | 'other';
       mortgage_kind: 'existing_assumed' | 'purchase_money' | 'institutional';
     };
+    CompositeTypes: Record<string, never>;
   };
 }
+
+type PublicSchema = Database[Extract<keyof Database, 'public'>];
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema['Tables'] & PublicSchema['Views'])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+        Database[PublicTableNameOrOptions['schema']]['Views'])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+      Database[PublicTableNameOrOptions['schema']]['Views'])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (PublicSchema['Tables'] &
+        PublicSchema['Views'])
+    ? (PublicSchema['Tables'] &
+        PublicSchema['Views'])[PublicTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema['Tables']
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema['Tables']
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema['Enums']
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema['Enums']
+    ? PublicSchema['Enums'][PublicEnumNameOrOptions]
+    : never;

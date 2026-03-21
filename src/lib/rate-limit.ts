@@ -8,7 +8,7 @@ function cleanup() {
   if (now - lastCleanup < CLEANUP_INTERVAL) return;
   lastCleanup = now;
 
-  for (const [key, entry] of rateStore) {
+  for (const [key, entry] of Array.from(rateStore.entries())) {
     if (entry.resetAt < now) {
       rateStore.delete(key);
     }

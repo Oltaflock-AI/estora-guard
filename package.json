@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "types:supabase": "supabase gen types typescript --project-id xpttymnscwklxavpcmpt > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
@@ -21,15 +23,20 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "latest",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "latest",
     "eslint": "latest",
     "eslint-config-next": "^14.2.0",
+    "jsdom": "^29.0.1",
     "postcss": "latest",
     "tailwindcss": "^3.4.0",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "^4.1.0"
   }
 }

@@ -28,6 +28,7 @@ import type {
 } from '@/lib/types';
 import WireFraudBanner from '@/components/security/WireFraudBanner';
 import ClosingProximityFlag from '@/components/security/ClosingProximityFlag';
+import MobileReadOnlyGuard from '@/components/MobileReadOnlyGuard';
 import { isContractLocked, lockdownMessage } from '@/lib/contract-lockdown';
 import type { FieldIssue } from '@/components/EditCanvas';
 import type { ValidationIssue } from '@/components/SectionNavigator';
@@ -153,6 +154,37 @@ function flattenContract(
   }
 
   return vals;
+}
+
+function ValidationIconBar({ issues }: { issues: Array<{ severity: string }> }) {
+  const errors = issues.filter((i) => i.severity === 'error').length;
+  const warnings = issues.filter((i) => i.severity === 'warning').length;
+  const infos = issues.filter((i) => i.severity === 'info').length;
+
+  return (
+    <>
+      {errors > 0 && (
+        <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center" title={`${errors} error(s)`}>
+          <span className="text-[10px] font-mono font-medium text-error">{errors}</span>
+        </div>
+      )}
+      {warnings > 0 && (
+        <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center" title={`${warnings} warning(s)`}>
+          <span className="text-[10px] font-mono font-medium text-warning">{warnings}</span>
+        </div>
+      )}
+      {infos > 0 && (
+        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center" title={`${infos} note(s)`}>
+          <span className="text-[10px] font-mono font-medium text-info">{infos}</span>
+        </div>
+      )}
+      {errors === 0 && warnings === 0 && infos === 0 && (
+        <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center" title="No issues">
+          <Check className="w-4 h-4 text-success" />
+        </div>
+      )}
+    </>
+  );
 }
 
 function ProgressBar({
@@ -503,6 +535,7 @@ export default function AgreementWorkspacePage() {
   const address = formatAddress(contract.property);
 
   return (
+    <MobileReadOnlyGuard>
     <div className="-mx-4 lg:-mx-8 -my-6 lg:-my-8">
       {/* ── Sticky Header Bar ──────────────────────── */}
       <header className="sticky top-14 z-20 bg-surface-raised border-b border-border px-4 lg:px-6 py-2.5">
@@ -605,12 +638,17 @@ export default function AgreementWorkspacePage() {
           />
         </main>
 
-        {/* Right: Validation Panel */}
-        <aside className="hidden xl:block flex-shrink-0 border-l border-border p-4">
-          <ValidationPanel
-            issues={issues}
-            onJumpToField={handleJumpToField}
-          />
+        {/* Right: Validation Panel — full at >=1440px, icon-bar at 1024-1439px */}
+        <aside className="hidden lg:block flex-shrink-0 border-l border-border p-4">
+          <div className="hidden xl:block w-[280px]">
+            <ValidationPanel
+              issues={issues}
+              onJumpToField={handleJumpToField}
+            />
+          </div>
+          <div className="xl:hidden w-10 flex flex-col items-center gap-2 pt-2">
+            <ValidationIconBar issues={issues} />
+          </div>
         </aside>
       </div>
 
@@ -663,5 +701,6 @@ export default function AgreementWorkspacePage() {
         </div>
       )}
     </div>
+    </MobileReadOnlyGuard>
   );
 }

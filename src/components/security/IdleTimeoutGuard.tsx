@@ -105,7 +105,7 @@ export default function IdleTimeoutGuard() {
           <div>
             <h3 className="font-display text-lg text-navy">Session Expiring</h3>
             <p className="text-xs text-secondary">
-              You've been inactive for a while
+              You&apos;ve been inactive for a while
             </p>
           </div>
         </div>

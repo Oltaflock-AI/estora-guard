@@ -37,13 +37,13 @@ async function loadAuditEvents(searchParams: SearchParams) {
     return { events: [], total: 0, page, pageSize };
   }
 
-  const profileIds = [
-    ...new Set(
+  const profileIds = Array.from(
+    new Set(
       (data ?? [])
         .map((e: Record<string, unknown>) => e.actor_id as string | null)
-        .filter(Boolean)
-    ),
-  ];
+        .filter((id): id is string => Boolean(id))
+    )
+  );
 
   let profiles: Record<string, { full_name: string | null; email: string | null }> = {};
   if (profileIds.length > 0) {
@@ -53,7 +53,7 @@ async function loadAuditEvents(searchParams: SearchParams) {
       .in('id', profileIds);
 
     if (profileData) {
-      for (const p of profileData) {
+      for (const p of profileData as Array<{ id: string; full_name: string | null; email: string | null }>) {
         profiles[p.id] = { full_name: p.full_name, email: p.email };
       }
     }

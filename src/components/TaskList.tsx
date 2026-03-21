@@ -45,7 +45,7 @@ function groupLabelColor(group: TaskGroup): string {
 function getTaskGroup(task: Task): TaskGroup {
   if (task.status === 'done') return 'complete';
   if (task.status === 'overdue') return 'overdue';
-  if (task.due_at && new Date(task.due_at) < new Date() && task.status !== 'done') {
+  if (task.due_at && new Date(task.due_at) < new Date()) {
     return 'overdue';
   }
   return 'upcoming';

@@ -112,6 +112,7 @@
 }
 
 @layer utilities {
+  /* ── Stagger fade-in (extraction rows, deal list) ── */
   .stagger-in {
     animation: staggerFadeIn 0.3s ease-out forwards;
     animation-delay: calc(var(--i, 0) * 50ms);
@@ -129,10 +130,12 @@
     }
   }
 
+  /* ── Health bar mercury fill ── */
   .health-bar-fill {
     transition: height 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
+  /* ── Overdue task pulse ── */
   .pulse-overdue {
     animation: pulseOverdue 2s ease-in-out infinite;
   }
@@ -140,5 +143,108 @@
   @keyframes pulseOverdue {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+
+  /* ── Completion ring animation (SectionNavigator) ── */
+  .completion-ring {
+    transition: stroke-dashoffset 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ── Auto-save indicator pulse ── */
+  .save-pulse {
+    animation: savePulse 1.2s ease-in-out;
+  }
+
+  @keyframes savePulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+
+  /* ── Smooth scroll for section jumps ── */
+  .scroll-smooth-fast {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+  }
+
+  /* ── Slide-in from right (panels) ── */
+  .slide-in-right {
+    animation: slideInRight 0.2s ease-out forwards;
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* ── Fade-in scale (modals, cards) ── */
+  .fade-in-scale {
+    animation: fadeInScale 0.2s ease-out forwards;
+  }
+
+  @keyframes fadeInScale {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* ── Timeline dot pulse (current milestone) ── */
+  .timeline-dot-current {
+    animation: timelineDotPulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes timelineDotPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201, 151, 58, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(201, 151, 58, 0); }
+  }
+
+  /* ── Card entrance (stagger from top) ── */
+  .card-enter {
+    animation: cardEnter 0.35s ease-out forwards;
+    animation-delay: calc(var(--i, 0) * 80ms);
+    opacity: 0;
+  }
+
+  @keyframes cardEnter {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ── Responsive: read-only mobile overlay ── */
+@media (max-width: 767px) {
+  .mobile-readonly-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface);
+    padding: 2rem;
+    text-align: center;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-readonly-overlay {
+    display: none;
   }
 }
