@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
 import { computeHealthScore } from '@/lib/services/health-service';
 import type {
   Contract,
@@ -14,7 +14,7 @@ import type {
 import TransactionDetail from './TransactionDetail';
 
 async function getTransaction(id: string) {
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   const { data: contract, error } = await supabase
     .from('contracts')

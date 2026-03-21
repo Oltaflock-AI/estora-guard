@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { computeHealthScore } from '@/lib/services/health-service';
 import { createAuditEvent } from '@/lib/services/audit-service';
@@ -11,8 +11,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string; taskId: string } }
 ) {
-  const supabase = createClient();
-  const { userId } = await requireAuth(supabase);
+  const authClient = createClient();
+  const { userId } = await requireAuth(authClient);
+  const supabase = createServiceClient();
 
   const body = await request.json();
   const newStatus = body.status as string;
