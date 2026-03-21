@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
@@ -11,6 +12,7 @@ import {
   Building,
   Banknote,
 } from 'lucide-react';
+import { useRealtime } from '@/hooks/useRealtime';
 import { StatusBadge } from '@/components/ui/Badge';
 import HealthBar from '@/components/HealthBar';
 import TimelineView from '@/components/TimelineView';
@@ -101,7 +103,26 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
     riskFlags,
   } = data;
 
+  const router = useRouter();
   const [health, setHealth] = useState<HealthData>(data.health);
+
+  useRealtime({
+    table: 'tasks',
+    event: '*',
+    filter: `contract_id=eq.${contract.id}`,
+    onChange: useCallback(() => {
+      router.refresh();
+    }, [router]),
+  });
+
+  useRealtime({
+    table: 'timeline_items',
+    event: '*',
+    filter: `contract_id=eq.${contract.id}`,
+    onChange: useCallback(() => {
+      router.refresh();
+    }, [router]),
+  });
 
   function handleHealthUpdate(update: {
     score: number;

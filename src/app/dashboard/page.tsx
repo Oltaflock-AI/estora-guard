@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import DocumentDropzone from '@/components/DocumentDropzone';
 import DealList from '@/components/DealList';
+import RealtimeRefresh from '@/components/RealtimeRefresh';
 import { DealTableSkeleton } from '@/components/ui/Skeleton';
 import type { ContractWithRelations } from '@/lib/types';
 
@@ -41,6 +42,8 @@ export default function DashboardPage() {
       </div>
 
       <DocumentDropzone />
+
+      <RealtimeRefresh table="contracts" />
 
       <Suspense fallback={<DealTableSkeleton />}>
         <DealListLoader />
