@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Surface */
+  --color-surface:        #F8F7F4;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: #EFEDE8;
+
+  /* Brand */
+  --color-navy:           #1B2A4A;
+  --color-navy-light:     #2D4270;
+
+  /* Accent */
+  --color-gold:           #C9973A;
+  --color-gold-light:     #F0DDB0;
+
+  /* Text */
+  --color-text-primary:   #1A1A1A;
+  --color-text-secondary: #666058;
+  --color-text-disabled:  #ABABAB;
+
+  /* Semantic */
+  --color-error:          #C0392B;
+  --color-warning:        #D4870A;
+  --color-success:        #2E7D32;
+  --color-info:           #1565C0;
+
+  /* Border */
+  --color-border:         #DEDAD2;
+  --color-border-focus:   #C9973A;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-primary font-sans antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-display text-navy;
+  }
+}
+
+@layer components {
+  .section-header {
+    @apply text-section-header uppercase tracking-wider text-navy font-medium;
+  }
+
+  .card {
+    @apply bg-surface-raised rounded-lg shadow-card border border-border p-section-x;
+  }
+
+  .field-label {
+    @apply text-xs font-medium text-secondary uppercase tracking-wider mb-1;
+  }
+
+  .field-input {
+    @apply h-field-height px-3 bg-surface-raised border border-border rounded-md
+           text-sm text-primary placeholder:text-disabled
+           focus:outline-none focus:border-border-focus focus:shadow-focus-gold
+           transition-all duration-150;
+  }
+
+  .field-input-readonly {
+    @apply h-field-height px-3 bg-surface-sunken border border-border rounded-md
+           text-sm text-secondary cursor-default;
+  }
+
+  .btn-primary {
+    @apply h-field-height px-6 bg-navy text-white text-sm font-medium rounded-md
+           hover:bg-navy-light focus:outline-none focus:shadow-focus-gold
+           transition-colors duration-150 inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply h-field-height px-6 bg-surface-raised text-navy text-sm font-medium rounded-md
+           border border-border hover:bg-surface-sunken
+           focus:outline-none focus:shadow-focus-gold
+           transition-colors duration-150 inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-gold {
+    @apply h-field-height px-6 bg-gold text-white text-sm font-medium rounded-md
+           hover:brightness-110 focus:outline-none focus:shadow-focus-gold
+           transition-colors duration-150 inline-flex items-center justify-center gap-2;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-error {
+    @apply badge bg-red-50 text-error;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-50 text-warning;
+  }
+
+  .badge-success {
+    @apply badge bg-green-50 text-success;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-50 text-info;
+  }
+
+  .mono-value {
+    @apply font-mono text-sm tabular-nums;
+  }
+}
+
+@layer utilities {
+  .stagger-in {
+    animation: staggerFadeIn 0.3s ease-out forwards;
+    animation-delay: calc(var(--i, 0) * 50ms);
+    opacity: 0;
+  }
+
+  @keyframes staggerFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .health-bar-fill {
+    transition: height 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .pulse-overdue {
+    animation: pulseOverdue 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseOverdue {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+}
