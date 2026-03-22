@@ -146,7 +146,8 @@ function flattenContract(
   }
 
   if (_escrow) {
-    vals.escrow_agent = `Escrow Agent`;
+    const agent = (_escrow as Record<string, unknown>).agent as { first_name: string; last_name: string } | null;
+    vals.escrow_agent = agent ? `${agent.first_name} ${agent.last_name}` : '';
     vals.bank_name = _escrow.bank_name;
     vals.account_reference = _escrow.account_reference;
     vals.amount_held = _escrow.amount_held;
@@ -336,7 +337,7 @@ export default function AgreementWorkspacePage() {
 
       const { data: eRow } = await supabase
         .from('contract_escrow')
-        .select('*')
+        .select('*, agent:people!escrow_agent_id(first_name, last_name)')
         .eq('contract_id', contractId)
         .maybeSingle();
 

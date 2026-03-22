@@ -261,25 +261,24 @@ export async function POST(
       } as never);
   }
 
-  const escrowAmount = getNumeric(extractions, 'amount_held');
-  const escrowAgent = getField(extractions, 'escrow_agent_name');
-  const bankName = getField(extractions, 'bank_name');
+  // Default escrow amount to downpayment if not explicitly extracted
+  const escrowAmount = getNumeric(extractions, 'amount_held') || downpayment;
+  const escrowAgent = getField(extractions, 'escrow_agent_name')
+    ?? getField(extractions, 'seller_attorney_name');
+  const bankName = getField(extractions, 'bank_name') || 'TBD — Attorney Trust Account';
 
-  if (escrowAmount > 0 && bankName) {
+  if (escrowAmount > 0) {
     let escrowAgentId = sellerId;
     if (escrowAgent) {
       const { data: agentRow } = await serviceClient
         .from('people')
-        .upsert(
-          {
-            first_name: escrowAgent.split(' ')[0] || escrowAgent,
-            last_name: escrowAgent.split(' ').slice(1).join(' ') || 'Escrow',
-            email: `escrow.${Date.now()}@pending.estora.app`,
-            city: city,
-            state: 'NY',
-          } as never,
-          { onConflict: 'email' }
-        )
+        .insert({
+          first_name: escrowAgent.split(' ')[0] || escrowAgent,
+          last_name: escrowAgent.split(' ').slice(1).join(' ') || 'Escrow',
+          email: `escrow.${Date.now()}@pending.estora.app`,
+          city: city,
+          state: 'NY',
+        } as never)
         .select('id')
         .single();
       if (agentRow) escrowAgentId = (agentRow as { id: string }).id;
@@ -299,6 +298,12 @@ export async function POST(
 
   try {
     await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date);
+    // Auto-complete "Execute contract" since the AOS was already signed when uploaded
+    await serviceClient
+      .from('tasks')
+      .update({ status: 'done', completed_at: new Date().toISOString() } as never)
+      .eq('contract_id', contract.id)
+      .eq('title', 'Execute contract');
   } catch (err) {
     console.error('Timeline generation failed:', err);
   }
