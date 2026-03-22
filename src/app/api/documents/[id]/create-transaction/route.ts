@@ -85,40 +85,49 @@ export async function POST(
   const sellerEmail = getField(extractions, 'seller_email') ?? `${sellerFirst.toLowerCase()}.${sellerLast.toLowerCase()}@pending.estora.app`;
   const purchaserEmail = getField(extractions, 'purchaser_email') ?? `${purchaserFirst.toLowerCase()}.${purchaserLast.toLowerCase()}@pending.estora.app`;
 
-  const { data: sellerRow } = await serviceClient
-    .from('people')
-    .upsert(
-      {
-        first_name: sellerFirst,
-        last_name: sellerLast,
-        email: sellerEmail,
-        city: getField(extractions, 'seller_city') ?? 'New York',
-        state: 'NY',
-        phone: getField(extractions, 'seller_phone'),
-      } as never,
-      { onConflict: 'email' }
-    )
-    .select('id')
-    .single();
+  // Expression index lower(email) is incompatible with PostgREST upsert onConflict,
+  // so we select-or-insert instead.
+  async function resolveOrCreatePerson(fields: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    city: string;
+    state: string;
+    phone: string | null;
+  }): Promise<string | null> {
+    const { data: existing } = await serviceClient
+      .from('people')
+      .select('id')
+      .ilike('email', fields.email)
+      .limit(1)
+      .single();
+    if (existing) return (existing as { id: string }).id;
 
-  const { data: purchaserRow } = await serviceClient
-    .from('people')
-    .upsert(
-      {
-        first_name: purchaserFirst,
-        last_name: purchaserLast,
-        email: purchaserEmail,
-        city: getField(extractions, 'purchaser_city') ?? 'New York',
-        state: 'NY',
-        phone: getField(extractions, 'purchaser_phone'),
-      } as never,
-      { onConflict: 'email' }
-    )
-    .select('id')
-    .single();
+    const { data: inserted } = await serviceClient
+      .from('people')
+      .insert(fields as never)
+      .select('id')
+      .single();
+    return (inserted as { id: string } | null)?.id ?? null;
+  }
 
-  const sellerId = (sellerRow as { id: string } | null)?.id;
-  const purchaserId = (purchaserRow as { id: string } | null)?.id;
+  const sellerId = await resolveOrCreatePerson({
+    first_name: sellerFirst,
+    last_name: sellerLast,
+    email: sellerEmail,
+    city: getField(extractions, 'seller_city') ?? 'New York',
+    state: 'NY',
+    phone: getField(extractions, 'seller_phone'),
+  });
+
+  const purchaserId = await resolveOrCreatePerson({
+    first_name: purchaserFirst,
+    last_name: purchaserLast,
+    email: purchaserEmail,
+    city: getField(extractions, 'purchaser_city') ?? 'New York',
+    state: 'NY',
+    phone: getField(extractions, 'purchaser_phone'),
+  });
 
   if (!sellerId || !purchaserId) {
     return NextResponse.json({ error: 'Failed to resolve parties.' }, { status: 500 });
@@ -134,12 +143,31 @@ export async function POST(
     ? (propertyTypeRaw as typeof validPropertyTypes[number])
     : 'single_family';
 
-  const { data: propertyRow } = await serviceClient
+  const street2 = getField(extractions, 'street_2');
+  // Expression index with coalesce is incompatible with PostgREST upsert onConflict.
+  let propertyQuery = serviceClient
     .from('properties')
-    .upsert(
-      {
+    .select('id')
+    .eq('street_1', street1)
+    .eq('city', city)
+    .eq('state', 'NY')
+    .eq('postal_code', postalCode);
+  if (street2) {
+    propertyQuery = propertyQuery.eq('street_2', street2);
+  } else {
+    propertyQuery = propertyQuery.is('street_2', null);
+  }
+  const { data: existingProperty } = await propertyQuery.limit(1).single();
+
+  let propertyId: string;
+  if (existingProperty) {
+    propertyId = (existingProperty as { id: string }).id;
+  } else {
+    const { data: insertedProperty } = await serviceClient
+      .from('properties')
+      .insert({
         street_1: street1,
-        street_2: getField(extractions, 'street_2'),
+        street_2: street2,
         city,
         state: 'NY',
         postal_code: postalCode,
@@ -152,13 +180,12 @@ export async function POST(
         has_public_road_access: getBool(extractions, 'has_public_road_access'),
         delivered_vacant: getBool(extractions, 'delivered_vacant'),
         as_is_sale: getBool(extractions, 'as_is_sale'),
-      } as never,
-      { onConflict: 'street_1,city,state,postal_code' }
-    )
-    .select('id')
-    .single();
+      } as never)
+      .select('id')
+      .single();
+    propertyId = (insertedProperty as { id: string } | null)?.id ?? '';
+  }
 
-  const propertyId = (propertyRow as { id: string } | null)?.id;
   if (!propertyId) {
     return NextResponse.json({ error: 'Failed to resolve property.' }, { status: 500 });
   }
