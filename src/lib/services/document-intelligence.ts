@@ -1,10 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { PDFParse } from 'pdf-parse';
 
-const MAX_TEXT_LENGTH = 12_000;
-const MIN_TEXT_LENGTH = 100;
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
-const MAX_TOKENS = 2_000;
+const MAX_TOKENS = 4_000;
 
 export interface ExtractionField {
   fieldName: string;
@@ -27,7 +24,7 @@ export interface ExtractionResult {
   riskFlags: RiskFlagResult[];
 }
 
-const EXTRACTION_PROMPT = `You are an expert real estate attorney analyzing a New York Residential Contract of Sale. Extract all structured data from the document text below.
+const EXTRACTION_PROMPT = `You are an expert real estate attorney analyzing a New York Residential Contract of Sale. Extract all structured data from the attached PDF document.
 
 Return a JSON object with exactly two keys:
 
@@ -87,34 +84,15 @@ export class ExtractionError extends Error {
   }
 }
 
-export async function extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
-  validatePdfBytes(pdfBuffer);
-
-  const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
-  const result = await parser.getText();
-  const text = result.text.trim();
-
-  await parser.destroy();
-
-  if (text.length < MIN_TEXT_LENGTH) {
-    throw new PdfValidationError(
-      'Extracted text is too short — this may be an image-only PDF. Please upload a text-based document.'
-    );
-  }
-
-  return text.length > MAX_TEXT_LENGTH
-    ? text.slice(0, MAX_TEXT_LENGTH)
-    : text;
-}
-
 function stripMarkdownFences(raw: string): string {
   return raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
 }
 
 export async function runExtraction(pdfBuffer: Buffer): Promise<ExtractionResult> {
-  const rawText = await extractTextFromPdf(pdfBuffer);
+  validatePdfBytes(pdfBuffer);
 
   const client = new Anthropic();
+  const pdfBase64 = pdfBuffer.toString('base64');
 
   let responseText = '';
   let retries = 0;
@@ -126,7 +104,20 @@ export async function runExtraction(pdfBuffer: Buffer): Promise<ExtractionResult
       messages: [
         {
           role: 'user',
-          content: `${EXTRACTION_PROMPT}\n\n---\nDOCUMENT TEXT:\n${rawText}`,
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: pdfBase64,
+              },
+            },
+            {
+              type: 'text',
+              text: EXTRACTION_PROMPT,
+            },
+          ],
         },
       ],
     });
@@ -146,7 +137,7 @@ export async function runExtraction(pdfBuffer: Buffer): Promise<ExtractionResult
       const summary = buildSummary(parsed.fields);
 
       return {
-        rawText,
+        rawText: `[PDF document analyzed directly by Claude — ${pdfBuffer.length} bytes]`,
         summary,
         fields: parsed.fields ?? [],
         riskFlags: parsed.riskFlags ?? [],
