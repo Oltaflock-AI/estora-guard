@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   LayoutGrid,
@@ -8,6 +8,7 @@ import {
   Calendar,
   ArrowUpDown,
   FileText,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import HealthBar from '@/components/HealthBar';
@@ -16,6 +17,7 @@ import type { ContractWithRelations, ContractStatus } from '@/lib/types';
 
 interface DealListProps {
   deals: ContractWithRelations[];
+  onDelete?: (id: string) => void; // optional external handler; internal handleDelete used by default
 }
 
 type SortKey = 'updated' | 'price' | 'closing';
@@ -106,10 +108,19 @@ function SortableHeader({
   );
 }
 
-export default function DealList({ deals }: DealListProps) {
+export default function DealList({ deals: initialDeals, onDelete }: DealListProps) {
+  const [deals, setDeals] = useState(initialDeals);
+  useEffect(() => setDeals(initialDeals), [initialDeals]);
   const [view, setView] = useState<'pipeline' | 'list'>('list');
   const [sortBy, setSortBy] = useState<SortKey>('updated');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  async function handleDelete(id: string) {
+    const res = await fetch(`/api/contracts/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setDeals((prev) => prev.filter((d) => d.id !== id));
+    }
+  }
 
   function handleSort(key: SortKey) {
     if (sortBy === key) {
@@ -262,6 +273,7 @@ export default function DealList({ deals }: DealListProps) {
                     currentDir={sortDir}
                     onSort={handleSort}
                   />
+                  <th className="px-4 py-3 w-10" />
                 </tr>
               </thead>
               <tbody>
@@ -310,6 +322,22 @@ export default function DealList({ deals }: DealListProps) {
                       <span className="font-mono text-sm text-secondary">
                         {formatDate(deal.closing_date)}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (confirm(`Delete deal ${deal.property.street_1}?`)) {
+                            (onDelete ?? handleDelete)(deal.id);
+                          }
+                        }}
+                        className="p-1.5 rounded text-secondary hover:text-error hover:bg-red-50 transition-colors"
+                        title="Delete deal"
+                        aria-label="Delete deal"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
