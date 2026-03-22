@@ -41,9 +41,34 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .limit(1);
 
-    const orgId = (membershipRows as Array<{ org_id: string }> | null)?.[0]?.org_id;
+    let orgId = (membershipRows as Array<{ org_id: string }> | null)?.[0]?.org_id;
+
     if (!orgId) {
-      return NextResponse.json({ error: 'No organization found.' }, { status: 403 });
+      // Auto-provision org + membership for new users
+      const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      const slug = `org-${user.id.slice(0, 8)}`;
+
+      const { data: orgRow, error: orgErr } = await serviceClient
+        .from('organizations')
+        .insert({ name: `${displayName}'s Team`, slug } as never)
+        .select('id')
+        .single();
+
+      if (orgErr || !orgRow) {
+        console.error('Org creation failed:', orgErr?.message);
+        return NextResponse.json({ error: 'Failed to create organization.' }, { status: 500 });
+      }
+
+      orgId = (orgRow as { id: string }).id;
+
+      const { error: memErr } = await serviceClient
+        .from('memberships')
+        .insert({ org_id: orgId, user_id: user.id, role: 'admin' } as never);
+
+      if (memErr) {
+        console.error('Membership creation failed:', memErr.message);
+        return NextResponse.json({ error: 'Failed to create membership.' }, { status: 500 });
+      }
     }
 
     let formData: FormData;
