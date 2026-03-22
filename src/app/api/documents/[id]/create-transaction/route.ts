@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { generateDefaultTimeline } from '@/lib/services/timeline-service';
+import { generateDefaultTimeline, type ExtractedDates } from '@/lib/services/timeline-service';
 import { computeHealthScore } from '@/lib/services/health-service';
 import { createAuditEvent } from '@/lib/services/audit-service';
 import type { Database } from '@/lib/supabase/database.types';
@@ -296,8 +296,21 @@ export async function POST(
       } as never);
   }
 
+  // Build extracted dates map from PDF extractions for timeline overrides
+  const dateFieldKeys = [
+    'contract_date', 'closing_date', 'commitment_date',
+    'inspection_deadline', 'attorney_review_deadline',
+    'mortgage_application_deadline', 'appraisal_deadline',
+    'title_search_deadline', 'certificate_of_occupancy_deadline',
+  ];
+  const extractedDates: ExtractedDates = {};
+  for (const key of dateFieldKeys) {
+    const val = getField(extractions, key);
+    if (val) extractedDates[key] = val;
+  }
+
   try {
-    await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date);
+    await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date, 'ny_residential', extractedDates);
     // Auto-complete "Execute contract" since the AOS was already signed when uploaded
     await serviceClient
       .from('tasks')

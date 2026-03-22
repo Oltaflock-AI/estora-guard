@@ -12,7 +12,12 @@ interface TemplateItem {
   category: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   milestone_type?: string;
+  /** Key into extractedDates to override offset_days with an actual date from the PDF */
+  date_override_key?: string;
 }
+
+/** Map of extraction field names to ISO date strings from the PDF */
+export type ExtractedDates = Record<string, string | null>;
 
 const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
   ny_residential: [
@@ -23,6 +28,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       category: 'Contract',
       severity: 'critical',
       milestone_type: 'contract_signed',
+      date_override_key: 'contract_date',
     },
     {
       title: 'Deposit earnest money',
@@ -37,6 +43,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       description: 'Attorney review of executed contract, riders, and contingencies',
       category: 'Contract',
       severity: 'high',
+      date_override_key: 'attorney_review_deadline',
     },
     {
       title: 'Submit mortgage application',
@@ -44,6 +51,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       description: 'Complete and submit full mortgage application to lender',
       category: 'Mortgage',
       severity: 'high',
+      date_override_key: 'mortgage_application_deadline',
     },
     {
       title: 'Order title search',
@@ -51,6 +59,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       description: 'Engage title company to perform a full title search',
       category: 'Title',
       severity: 'high',
+      date_override_key: 'title_search_deadline',
     },
     {
       title: 'Schedule property inspection',
@@ -58,6 +67,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       description: 'Schedule and complete the general property inspection',
       category: 'Inspection',
       severity: 'high',
+      date_override_key: 'inspection_deadline',
     },
     {
       title: 'Appraisal ordered',
@@ -72,6 +82,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       description: 'Review the lender-ordered property appraisal report',
       category: 'Appraisal',
       severity: 'high',
+      date_override_key: 'appraisal_deadline',
     },
     {
       title: 'Receive mortgage commitment',
@@ -80,6 +91,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       category: 'Mortgage',
       severity: 'critical',
       milestone_type: 'commitment_received',
+      date_override_key: 'commitment_date',
     },
     {
       title: 'Title cleared',
@@ -95,6 +107,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       description: 'Verify certificate of occupancy is current and valid',
       category: 'Compliance',
       severity: 'medium',
+      date_override_key: 'certificate_of_occupancy_deadline',
     },
     {
       title: 'Smoke detector affidavit',
@@ -125,8 +138,17 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
 function computeDueDate(
   anchorDate: Date,
   closeDateStr: string | null,
-  item: TemplateItem
+  item: TemplateItem,
+  extractedDates: ExtractedDates
 ): Date {
+  // Use extracted date from the PDF if available
+  if (item.date_override_key) {
+    const extracted = extractedDates[item.date_override_key];
+    if (extracted) {
+      return new Date(extracted);
+    }
+  }
+
   if (item.milestone_type === 'closing' && closeDateStr) {
     return new Date(closeDateStr);
   }
@@ -146,21 +168,24 @@ export async function generateDefaultTimeline(
   supabase: TypedClient,
   contractId: string,
   closeDate: string | null,
-  templateName: string = 'ny_residential'
+  templateName: string = 'ny_residential',
+  extractedDates: ExtractedDates = {}
 ): Promise<void> {
   const template = TIMELINE_TEMPLATES[templateName];
   if (!template) {
     throw new Error(`Unknown timeline template: ${templateName}`);
   }
 
-  const now = new Date();
+  // Use contract_date as anchor if available, otherwise today
+  const anchorDateStr = extractedDates.contract_date;
+  const now = anchorDateStr ? new Date(anchorDateStr) : new Date();
 
   const tasksToInsert: TaskInsert[] = [];
   const timelineToInsert: TimelineInsert[] = [];
 
   for (let i = 0; i < template.length; i++) {
     const item = template[i];
-    const dueAt = computeDueDate(now, closeDate, item);
+    const dueAt = computeDueDate(now, closeDate, item, extractedDates);
 
     tasksToInsert.push({
       contract_id: contractId,

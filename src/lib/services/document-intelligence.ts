@@ -50,7 +50,7 @@ Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, ac
 
 Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, escrow_required, commitment_received
 
-Date fields: contract_date, closing_date, commitment_date
+Date fields: contract_date, closing_date, commitment_date, inspection_deadline, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
 
 Condition fields: subject_to_mortgage_contingency, seller_has_right_to_sell, seller_not_foreign_person, no_undisclosed_abatements, title_insurable, premises_broom_clean, systems_in_working_order, smoke_detector_affidavit_required, certificate_of_occupancy_required, firpta_cert_required
 
