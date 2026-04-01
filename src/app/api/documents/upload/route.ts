@@ -78,6 +78,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid form data.' }, { status: 400 });
     }
 
+    const contractIdRaw = formData.get('contract_id');
+    const docTypeRaw = formData.get('doc_type');
+    const contractId =
+      typeof contractIdRaw === 'string' && contractIdRaw.length > 0 ? contractIdRaw : null;
+    const requestedDocType =
+      typeof docTypeRaw === 'string' && docTypeRaw.length > 0 ? docTypeRaw : null;
+
     const file = formData.get('file');
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
@@ -100,6 +107,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let linkedContractId: string | null = null;
+    if (contractId) {
+      const { data: contractRow, error: contractErr } = await serviceClient
+        .from('contracts')
+        .select('id, org_id')
+        .eq('id', contractId)
+        .maybeSingle();
+
+      if (contractErr || !contractRow) {
+        return NextResponse.json({ error: 'Contract not found.' }, { status: 404 });
+      }
+
+      const c = contractRow as { id: string; org_id: string | null };
+      if (c.org_id) {
+        if (c.org_id !== orgId) {
+          return NextResponse.json(
+            { error: 'You do not have access to attach documents to this transaction.' },
+            { status: 403 }
+          );
+        }
+      } else {
+        const { data: anyDoc } = await serviceClient
+          .from('documents')
+          .select('org_id')
+          .eq('contract_id', contractId)
+          .limit(1)
+          .maybeSingle();
+        const docOrg = (anyDoc as { org_id: string } | null)?.org_id;
+        if (docOrg) {
+          if (docOrg !== orgId) {
+            return NextResponse.json(
+              { error: 'You do not have access to attach documents to this transaction.' },
+              { status: 403 }
+            );
+          }
+        } else {
+          const { data: srcContract } = await serviceClient
+            .from('contracts')
+            .select('source_document_id')
+            .eq('id', contractId)
+            .maybeSingle();
+          const srcId = (srcContract as { source_document_id: string | null } | null)
+            ?.source_document_id;
+          if (!srcId) {
+            return NextResponse.json(
+              { error: 'You do not have access to attach documents to this transaction.' },
+              { status: 403 }
+            );
+          }
+          const { data: srcDoc } = await serviceClient
+            .from('documents')
+            .select('org_id')
+            .eq('id', srcId)
+            .maybeSingle();
+          const srcOrg = (srcDoc as { org_id: string } | null)?.org_id;
+          if (!srcOrg || srcOrg !== orgId) {
+            return NextResponse.json(
+              { error: 'You do not have access to attach documents to this transaction.' },
+              { status: 403 }
+            );
+          }
+        }
+      }
+      linkedContractId = c.id;
+    }
+
     const safeName = sanitizeFilename(file.name);
     const storagePath = `uploads/${user.id}/${Date.now()}_${safeName}`;
 
@@ -115,12 +188,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Failed to store document: ${storageError.message}` }, { status: 500 });
     }
 
+    const validDocTypes = ['agreement_of_sale', 'disclosure', 'addendum', 'other'] as const;
+    const resolvedRequestedType =
+      requestedDocType &&
+      validDocTypes.includes(requestedDocType as (typeof validDocTypes)[number])
+        ? (requestedDocType as (typeof validDocTypes)[number])
+        : null;
+
     const docInsert: Database['public']['Tables']['documents']['Insert'] = {
       org_id: orgId,
       uploaded_by: user.id,
       filename: safeName,
       storage_path: storagePath,
       status: 'processing',
+      ...(linkedContractId ? { contract_id: linkedContractId } : {}),
     };
 
     const { data: docRow, error: docError } = await serviceClient
@@ -139,13 +220,17 @@ export async function POST(request: NextRequest) {
     try {
       const result = await runExtraction(buffer);
 
+      const finalDocType = linkedContractId
+        ? resolvedRequestedType ?? 'other'
+        : 'agreement_of_sale';
+
       await serviceClient
         .from('documents')
         .update({
           status: 'done',
           raw_text: result.rawText,
           summary: result.summary,
-          doc_type: 'agreement_of_sale',
+          doc_type: finalDocType,
         } as never)
         .eq('id', doc.id);
 
@@ -189,6 +274,7 @@ export async function POST(request: NextRequest) {
           fileSize: file.size,
           fieldCount: result.fields.length,
           riskFlagCount: result.riskFlags.length,
+          contractId: linkedContractId,
         },
       });
 

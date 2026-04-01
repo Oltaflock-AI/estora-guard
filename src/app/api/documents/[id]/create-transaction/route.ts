@@ -225,6 +225,7 @@ export async function POST(
     certificate_of_occupancy_required: getBool(extractions, 'certificate_of_occupancy_required'),
     firpta_cert_required: getBool(extractions, 'firpta_cert_required'),
     source_document_id: documentId,
+    org_id: doc.org_id,
   };
 
   const { data: contractRow, error: contractError } = await serviceClient

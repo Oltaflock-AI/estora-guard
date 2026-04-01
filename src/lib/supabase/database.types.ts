@@ -145,6 +145,7 @@ export interface Database {
           health_score: number | null;
           health_status: 'green' | 'yellow' | 'red' | null;
           source_document_id: string | null;
+          org_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -180,6 +181,7 @@ export interface Database {
           health_score?: number | null;
           health_status?: 'green' | 'yellow' | 'red' | null;
           source_document_id?: string | null;
+          org_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -215,6 +217,7 @@ export interface Database {
           health_score?: number | null;
           health_status?: 'green' | 'yellow' | 'red' | null;
           source_document_id?: string | null;
+          org_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];

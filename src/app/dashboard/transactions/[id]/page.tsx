@@ -10,6 +10,7 @@ import type {
   RiskFlag,
   ContractMortgage,
   ContractEscrow,
+  Document,
 } from '@/lib/types';
 import TransactionDetail from './TransactionDetail';
 
@@ -87,13 +88,36 @@ async function getTransaction(id: string) {
 
   if (!property || !seller || !purchaser) return null;
 
+  const { data: contractDocuments } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('contract_id', id)
+    .order('created_at', { ascending: false });
+
+  const documents = (contractDocuments ?? []) as Document[];
+
+  const documentIds = documents.map((d) => d.id);
+  if (
+    contract.source_document_id &&
+    !documentIds.includes(contract.source_document_id)
+  ) {
+    documentIds.push(contract.source_document_id);
+  }
+
   let riskFlags: RiskFlag[] = [];
-  if (contract.source_document_id) {
+  if (documentIds.length > 0) {
     const { data: flags } = await supabase
       .from('risk_flags')
       .select('*')
-      .eq('document_id', contract.source_document_id);
+      .in('document_id', documentIds);
     riskFlags = (flags ?? []) as RiskFlag[];
+    const severityOrder = { high: 0, medium: 1, low: 2 } as const;
+    riskFlags.sort((a, b) => {
+      const sa = severityOrder[a.severity as keyof typeof severityOrder] ?? 3;
+      const sb = severityOrder[b.severity as keyof typeof severityOrder] ?? 3;
+      if (sa !== sb) return sa - sb;
+      return (a.title ?? '').localeCompare(b.title ?? '');
+    });
   }
 
   const health = await computeHealthScore(supabase, id);
@@ -110,6 +134,7 @@ async function getTransaction(id: string) {
     mortgages: (mortgages ?? []) as ContractMortgage[],
     escrow: escrow as ContractEscrow | null,
     riskFlags,
+    documents,
     health,
   };
 }
