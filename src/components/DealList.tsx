@@ -48,10 +48,10 @@ function DealCard({ deal }: { deal: ContractWithRelations }) {
           <HealthBar score={deal.health_score} status={deal.health_status} compact />
         </div>
         <p className="text-sm font-medium text-primary truncate mb-0.5">
-          {deal.property.street_1}
+          {deal.property?.street_1 ?? 'No address'}
         </p>
         <p className="text-xs text-secondary mb-3">
-          {deal.property.city}, {deal.property.state}
+          {deal.property?.city ?? '—'}, {deal.property?.state ?? '—'}
         </p>
         <div className="flex items-center justify-between">
           <span className="font-mono text-sm text-primary">
@@ -66,7 +66,7 @@ function DealCard({ deal }: { deal: ContractWithRelations }) {
         </div>
         <div className="mt-2 pt-2 border-t border-border">
           <p className="text-xs text-secondary truncate">
-            {deal.seller.last_name} → {deal.purchaser.last_name}
+            {deal.seller?.last_name ?? '—'} → {deal.purchaser?.last_name ?? '—'}
           </p>
         </div>
       </div>
@@ -289,18 +289,18 @@ export default function DealList({ deals: initialDeals, onDelete }: DealListProp
                         className="group"
                       >
                         <p className="text-sm font-medium text-primary group-hover:text-navy transition-colors">
-                          {deal.property.street_1}
+                          {deal.property?.street_1 ?? 'No address'}
                         </p>
                         <p className="text-xs text-secondary">
-                          {deal.property.city}, {deal.property.state}
+                          {deal.property?.city ?? '—'}, {deal.property?.state ?? '—'}
                         </p>
                       </Link>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-primary">
-                        {deal.seller.last_name}{' '}
+                        {deal.seller?.last_name ?? '—'}{' '}
                         <span className="text-disabled">→</span>{' '}
-                        {deal.purchaser.last_name}
+                        {deal.purchaser?.last_name ?? '—'}
                       </p>
                     </td>
                     <td className="px-4 py-3">
@@ -328,7 +328,7 @@ export default function DealList({ deals: initialDeals, onDelete }: DealListProp
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (confirm(`Delete deal ${deal.property.street_1}?`)) {
+                          if (confirm(`Delete deal ${deal.property?.street_1 ?? deal.id}?`)) {
                             (onDelete ?? handleDelete)(deal.id);
                           }
                         }}
