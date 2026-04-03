@@ -298,6 +298,34 @@ npm run test:watch  # watch mode
 
 ---
 
+## Technical Challenges & Solutions
+
+### 1. Row-Level Security Blocking Related Data in Joins
+
+**Problem:** The dashboard showed contracts (deal name, price, status) but all property addresses displayed as "No address" and party names showed as dashes ("— → —"). The deal data was partially loading — contracts appeared, but their linked property and people records were invisible.
+
+**Root Cause:** Supabase enforces Row-Level Security (RLS) at the database level, meaning every query is filtered based on the logged-in user's permissions. The RLS policies on the `properties` and `people` tables were designed for a party-based access model — they required a `person_id` claim inside the user's authentication token (JWT). However, standard Supabase Auth users authenticate with email/password and receive a JWT that contains a `user_id`, not a `person_id`. This meant the database silently filtered out all property and people records, returning `null` for those joins even though the contracts themselves were accessible through a separate org-based policy.
+
+**Solution:** Switched the dashboard query from the standard Supabase client (which respects RLS) to a **service role client** that bypasses RLS, but scoped the query to only return contracts belonging to the authenticated user's organization. This mirrors the pattern already used on the transaction detail page. The security boundary is maintained at the application level (org-scoped filtering) rather than relying on RLS policies that weren't compatible with the auth model.
+
+**Key Takeaway:** When using Supabase RLS with relational joins, every table in the join chain must have compatible access policies. A query can succeed on the parent table but silently return `null` for joined tables if their RLS policies use different authorization claims.
+
+---
+
+### 2. Browser-Native Dialogs Exposing Internal IDs
+
+**Problem:** Clicking the delete button on a deal triggered the browser's built-in `confirm()` dialog, which displayed a raw UUID (e.g., `Delete deal 49ba3a3c-978f-4052-9f3f-d37713558e81?`). This looked unprofessional and exposed internal database identifiers to the user.
+
+**Root Cause:** The delete handler used JavaScript's native `window.confirm()` function, which cannot be styled and falls back to showing the deal's UUID when no property address is available (which was the case due to the RLS issue above).
+
+**Solution:** Replaced the browser dialog with a custom React modal component that:
+- Displays the property address (or contract number as fallback) instead of the UUID
+- Includes a warning icon, clear messaging about the irreversible action, and styled Cancel/Delete buttons
+- Closes on backdrop click or Escape key press
+- Follows the application's existing design system (navy/gold/warm-white palette, Playfair Display headings)
+
+---
+
 ## About the `transaction-control/` Folder
 
 The `transaction-control/` directory contains a Python/FastAPI backend that was the original architectural plan. It includes:
