@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   LayoutGrid,
@@ -9,11 +9,77 @@ import {
   ArrowUpDown,
   FileText,
   Trash2,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import HealthBar from '@/components/HealthBar';
 import { formatCurrency, formatDateShort, formatDate } from '@/lib/utils';
 import type { ContractWithRelations, ContractStatus } from '@/lib/types';
+
+/* ── Delete confirmation modal ── */
+function DeleteModal({
+  deal,
+  onConfirm,
+  onCancel,
+}: {
+  deal: ContractWithRelations;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  // Close on Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onCancel]);
+
+  const label = deal.property?.street_1 ?? deal.contract_number ?? 'this deal';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm fade-in-scale"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-surface-raised rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-5 h-5 text-error" />
+          </div>
+          <div>
+            <h3 className="font-display text-lg text-navy">Delete deal</h3>
+            <p className="text-sm text-secondary mt-1">
+              Are you sure you want to delete <strong>{label}</strong>? This
+              action cannot be undone and will remove all associated data.
+            </p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="p-1 rounded text-secondary hover:text-primary transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onCancel} className="btn-secondary text-sm px-4 py-2">
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="text-sm px-4 py-2 rounded-md bg-error text-white hover:bg-red-700 transition-colors font-medium"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface DealListProps {
   deals: ContractWithRelations[];
@@ -114,6 +180,7 @@ export default function DealList({ deals: initialDeals, onDelete }: DealListProp
   const [view, setView] = useState<'pipeline' | 'list'>('list');
   const [sortBy, setSortBy] = useState<SortKey>('updated');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [deletingDeal, setDeletingDeal] = useState<ContractWithRelations | null>(null);
 
   async function handleDelete(id: string) {
     const res = await fetch(`/api/contracts/${id}`, { method: 'DELETE' });
@@ -121,6 +188,12 @@ export default function DealList({ deals: initialDeals, onDelete }: DealListProp
       setDeals((prev) => prev.filter((d) => d.id !== id));
     }
   }
+
+  const confirmDelete = useCallback(() => {
+    if (!deletingDeal) return;
+    (onDelete ?? handleDelete)(deletingDeal.id);
+    setDeletingDeal(null);
+  }, [deletingDeal, onDelete]);
 
   function handleSort(key: SortKey) {
     if (sortBy === key) {
@@ -182,6 +255,13 @@ export default function DealList({ deals: initialDeals, onDelete }: DealListProp
 
   return (
     <div>
+      {deletingDeal && (
+        <DeleteModal
+          deal={deletingDeal}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingDeal(null)}
+        />
+      )}
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-header">
           Active Deals
@@ -328,9 +408,7 @@ export default function DealList({ deals: initialDeals, onDelete }: DealListProp
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (confirm(`Delete deal ${deal.property?.street_1 ?? deal.id}?`)) {
-                            (onDelete ?? handleDelete)(deal.id);
-                          }
+                          setDeletingDeal(deal);
                         }}
                         className="p-1.5 rounded text-secondary hover:text-error hover:bg-red-50 transition-colors"
                         title="Delete deal"

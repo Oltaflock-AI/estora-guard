@@ -1,15 +1,28 @@
 import { Suspense } from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import DocumentDropzone from '@/components/DocumentDropzone';
 import DealList from '@/components/DealList';
 import RealtimeRefresh from '@/components/RealtimeRefresh';
 import { DealTableSkeleton } from '@/components/ui/Skeleton';
+import { getUserOrgs } from '@/lib/auth-helpers';
 import type { ContractWithRelations } from '@/lib/types';
 
 async function DealListLoader() {
   const supabase = createClient();
+  const serviceClient = createServiceClient();
 
-  const { data, error } = await supabase
+  // Get the user's org IDs so we can scope the query
+  const orgs = await getUserOrgs(supabase);
+  const orgIds = orgs.map((o) => o.orgId);
+
+  if (orgIds.length === 0) {
+    return <DealList deals={[]} />;
+  }
+
+  // Use service client to bypass RLS on properties/people joins,
+  // but scope to the user's orgs for security.
+  // Include contracts with matching org_id OR null org_id (seed data).
+  const { data, error } = await serviceClient
     .from('contracts')
     .select(
       `
@@ -19,6 +32,7 @@ async function DealListLoader() {
       purchaser:people!purchaser_id (*)
     `
     )
+    .or(`org_id.in.(${orgIds.join(',')}),org_id.is.null`)
     .order('updated_at', { ascending: false })
     .limit(100);
 
