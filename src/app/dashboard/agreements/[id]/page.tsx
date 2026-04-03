@@ -76,19 +76,19 @@ function flattenContract(
 ): Record<string, unknown> {
   const vals: Record<string, unknown> = {};
 
-  vals.seller_first_name = contract.seller.first_name;
-  vals.seller_last_name = contract.seller.last_name;
-  vals.seller_email = contract.seller.email;
-  vals.seller_phone = contract.seller.phone;
-  vals.seller_city = contract.seller.city;
-  vals.seller_masked_tax_id = contract.seller.masked_tax_id;
+  vals.seller_first_name = contract.seller?.first_name ?? '';
+  vals.seller_last_name = contract.seller?.last_name ?? '';
+  vals.seller_email = contract.seller?.email ?? '';
+  vals.seller_phone = contract.seller?.phone ?? '';
+  vals.seller_city = contract.seller?.city ?? '';
+  vals.seller_masked_tax_id = contract.seller?.masked_tax_id ?? '';
 
-  vals.purchaser_first_name = contract.purchaser.first_name;
-  vals.purchaser_last_name = contract.purchaser.last_name;
-  vals.purchaser_email = contract.purchaser.email;
-  vals.purchaser_phone = contract.purchaser.phone;
-  vals.purchaser_city = contract.purchaser.city;
-  vals.purchaser_masked_tax_id = contract.purchaser.masked_tax_id;
+  vals.purchaser_first_name = contract.purchaser?.first_name ?? '';
+  vals.purchaser_last_name = contract.purchaser?.last_name ?? '';
+  vals.purchaser_email = contract.purchaser?.email ?? '';
+  vals.purchaser_phone = contract.purchaser?.phone ?? '';
+  vals.purchaser_city = contract.purchaser?.city ?? '';
+  vals.purchaser_masked_tax_id = contract.purchaser?.masked_tax_id ?? '';
 
   if (contract.seller_attorney) {
     vals.seller_attorney = `${contract.seller_attorney.first_name} ${contract.seller_attorney.last_name}`;
@@ -97,19 +97,19 @@ function flattenContract(
     vals.purchaser_attorney = `${contract.purchaser_attorney.first_name} ${contract.purchaser_attorney.last_name}`;
   }
 
-  vals.street_1 = contract.property.street_1;
-  vals.street_2 = contract.property.street_2;
-  vals.city = contract.property.city;
-  vals.county = contract.property.county;
-  vals.postal_code = contract.property.postal_code;
-  vals.property_type = contract.property.property_type;
-  vals.bedrooms = contract.property.bedrooms;
-  vals.bathrooms = contract.property.bathrooms;
-  vals.year_built = contract.property.year_built;
-  vals.legal_description = contract.property.legal_description;
-  vals.has_public_road_access = contract.property.has_public_road_access;
-  vals.delivered_vacant = contract.property.delivered_vacant;
-  vals.as_is_sale = contract.property.as_is_sale;
+  vals.street_1 = contract.property?.street_1 ?? '';
+  vals.street_2 = contract.property?.street_2 ?? '';
+  vals.city = contract.property?.city ?? '';
+  vals.county = contract.property?.county ?? '';
+  vals.postal_code = contract.property?.postal_code ?? '';
+  vals.property_type = contract.property?.property_type ?? '';
+  vals.bedrooms = contract.property?.bedrooms ?? null;
+  vals.bathrooms = contract.property?.bathrooms ?? null;
+  vals.year_built = contract.property?.year_built ?? null;
+  vals.legal_description = contract.property?.legal_description ?? '';
+  vals.has_public_road_access = contract.property?.has_public_road_access ?? null;
+  vals.delivered_vacant = contract.property?.delivered_vacant ?? null;
+  vals.as_is_sale = contract.property?.as_is_sale ?? null;
 
   vals.purchase_price = contract.purchase_price;
   vals.downpayment_amount = contract.downpayment_amount;
@@ -533,7 +533,7 @@ export default function AgreementWorkspacePage() {
     );
   }
 
-  const address = formatAddress(contract.property);
+  const address = contract.property ? formatAddress(contract.property) : 'Unknown Property';
 
   return (
     <MobileReadOnlyGuard>
