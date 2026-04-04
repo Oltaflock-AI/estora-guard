@@ -27,7 +27,7 @@ insert into auth.users (
   'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
   '00000000-0000-0000-0000-000000000000',
   'demo@estora.app',
-  crypt('EstoraDemo2026!', gen_salt('bf')),
+  extensions.crypt('EstoraDemo2026!', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
   '{"full_name":"Alex Chen"}'::jsonb,

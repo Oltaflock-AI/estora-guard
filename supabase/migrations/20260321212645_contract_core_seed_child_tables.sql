@@ -21,7 +21,7 @@ items as (
 )
 insert into public.contract_personal_property (contract_id, item_name, included, notes)
 select c.id, i.item_name, i.included, i.notes
-from c cross join items
+from c cross join items i
 on conflict do nothing;
 
 -- Realistic exclusions: lighting fixtures excluded on contracts 3, 11, 27, 42

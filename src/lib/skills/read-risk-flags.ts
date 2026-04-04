@@ -61,7 +61,7 @@ export async function readRiskFlags(
       return [
         `### ${i + 1}. ${f.title}`,
         `**Severity:** ${f.severity} | **Type:** ${f.flag_type} | **Status:** ${ack}`,
-        f.description,
+        f.explanation,
         '',
       ].join('\n');
     }),

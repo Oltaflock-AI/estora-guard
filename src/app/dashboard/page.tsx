@@ -32,7 +32,7 @@ async function DealListLoader() {
       purchaser:people!purchaser_id (*)
     `
     )
-    .or(`org_id.in.(${orgIds.join(',')}),org_id.is.null`)
+    .in('org_id', orgIds)
     .order('updated_at', { ascending: false })
     .limit(100);
 
