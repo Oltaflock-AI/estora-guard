@@ -1,0 +1,5 @@
+# Lightning.ai Studio - Python dependencies
+# These are helper packages for the deployment environment.
+# The actual app is Node.js/Next.js — npm handles those deps.
+
+nodeenv==1.9.1
