@@ -55,6 +55,10 @@ export default function AgentOverviewPage() {
           <div className="space-y-2 text-sm text-secondary">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-success" />
+              NemoClaw OpenShell sandbox (network + process isolation)
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-success" />
               Policy-governed skill execution
             </div>
             <div className="flex items-center gap-2">

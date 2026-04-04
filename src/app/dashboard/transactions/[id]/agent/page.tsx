@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase/server';
 import type { Contract, Property } from '@/lib/types';
 import AgentPanel from '@/components/agent/AgentPanel';
+import NemoClawBanner from '@/components/agent/NemoClawBanner';
 import { ArrowLeft, Bot } from 'lucide-react';
 import Link from 'next/link';
 
@@ -63,6 +64,8 @@ export default async function AgentPage({
           </div>
         </div>
       </div>
+
+      <NemoClawBanner />
 
       <div className="card min-h-[600px] flex flex-col">
         <AgentPanel transactionId={params.id} />
