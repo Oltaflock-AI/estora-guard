@@ -13,6 +13,7 @@ import {
   Banknote,
   Upload,
   Loader2,
+  Bot,
 } from 'lucide-react';
 import { useRealtime } from '@/hooks/useRealtime';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -266,6 +267,13 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
                   Seller side
                 </button>
               </div>
+              <Link
+                href={`/dashboard/transactions/${contract.id}/agent`}
+                className="btn-gold gap-2 justify-center"
+              >
+                <Bot className="w-4 h-4" />
+                Ask Agent
+              </Link>
               <Link
                 href={`/dashboard/agreements/${contract.id}`}
                 className="btn-primary gap-2 justify-center"
