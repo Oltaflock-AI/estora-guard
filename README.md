@@ -1,340 +1,260 @@
-# Estora AI
+# Estora Guard
 
-Real estate transaction intelligence platform. Upload a contract PDF, let Claude extract structured fields and flag risks, then manage the deal through a full milestone timeline with health scoring and audit trail.
-
----
-
-## Architecture Overview
-
-Estora is a **self-contained Next.js 14 application** using **Supabase** as the backend (database, auth, storage). All business logic runs inside Next.js API routes and service modules — there is no separate backend server.
-
-> **Note:** The `transaction-control/` folder contains a Python/FastAPI backend that was scaffolded early on but is **not used** by the application. The entire platform was rebuilt as a Next.js + Supabase monolith. That folder can be ignored or removed.
-
-### Tech Stack
-
-| Layer        | Technology                          |
-|-------------|-------------------------------------|
-| Framework   | Next.js 14 (App Router)            |
-| Language    | TypeScript (strict mode)            |
-| Database    | Supabase (PostgreSQL + Row-Level Security) |
-| Auth        | Supabase Auth (email/password)      |
-| Storage     | Supabase Storage (PDF uploads)      |
-| AI          | Anthropic Claude API (`claude-sonnet-4-20250514`) |
-| Styling     | Tailwind CSS                        |
-| Icons       | Lucide React                        |
-| Date utils  | date-fns                            |
-| Testing     | Vitest + React Testing Library      |
+Real estate transaction intelligence platform with a role-aware AI agent and policy-governed security layer. Upload a contract PDF, let Claude extract structured fields and flag risks, manage the deal through a full milestone timeline — and ask an agent to reason about it with a built-in firewall around every action it can take.
 
 ---
 
-## Core Demo Loop
+## What's in this repo
+
+**Estora** — the core platform. Contract extraction, risk detection, timeline generation, health scoring, audit trail, PII masking.
+
+**Estora Guard** — the AI agent + security layer built on top. A role-aware chat agent with a manifest-driven policy engine, human approval gates for sensitive actions, receipt logging on every agent action, and a red-team attack console to verify the security layer works under adversarial pressure.
+
+---
+
+## Architecture
+
+Self-contained Next.js 14 application using Supabase as the backend. No separate API server.
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript (strict mode) |
+| Database | Supabase (PostgreSQL + Row-Level Security) |
+| Auth | Supabase Auth (email/password) |
+| Storage | Supabase Storage (PDF uploads) |
+| AI | Anthropic Claude API (`claude-sonnet-4-20250514`) |
+| Document Parsing | LlamaParse API (PDF → markdown) |
+| Agent Security Runtime | NVIDIA NemoClaw / OpenShell (separate process) |
+| Styling | Tailwind CSS |
+| Icons | Lucide React |
+| Testing | Vitest + React Testing Library |
+
+> The `transaction-control/` folder contains a Python/FastAPI backend that was scaffolded early and is **not used**. Ignore it.
+
+---
+
+## Core flows
+
+### Estora: document → transaction
 
 ```
-Upload PDF  -->  AI Extraction + Risk Flags  -->  Create Transaction  -->  Timeline + Health Score
+Upload PDF → AI Extraction + Risk Flags → Create Transaction → Timeline + Health Score + Tasks
 ```
 
-1. **Upload PDF** — Agent drops a real estate contract into the dashboard
-2. **AI Extraction** — Claude reads the PDF and extracts structured fields (buyer, seller, dates, price, contingencies) with confidence scores and page references
-3. **Risk Detection** — Rules engine flags risks (short inspection windows, missing clauses, ambiguous language)
-4. **Transaction Creation** — One click creates the full deal: contract record, parties, property, mortgage, escrow, timeline, and health score
-5. **Deal Management** — Transaction detail page shows timeline, tasks, health bar, and risk flags. Tasks can be checked off, health recalculates automatically
-6. **Agreement Editing** — Inline editing workspace with real-time validation and auto-save
-7. **Audit Trail** — Every mutation is logged to an append-only audit table
+### Estora Guard: transaction → agent
+
+```
+Open agent page → Select role → Ask question → Policy check → Skill execution → Receipt logged
+                                             → Attack console → Run 8 attacks → Scoreboard
+```
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 src/
 ├── app/
-│   ├── page.tsx                              # Landing page
-│   ├── layout.tsx                            # Root layout (fonts, theme)
-│   ├── globals.css                           # Design tokens + Tailwind
 │   ├── (auth)/
-│   │   ├── login/page.tsx                    # Login
-│   │   ├── signup/page.tsx                   # Registration
-│   │   └── forgot-password/page.tsx          # Password recovery
+│   │   ├── login/page.tsx
+│   │   ├── signup/page.tsx
+│   │   └── forgot-password/page.tsx
 │   ├── dashboard/
-│   │   ├── page.tsx                          # Upload dropzone + deal list
-│   │   ├── documents/[id]/page.tsx           # Extraction review
-│   │   ├── transactions/[id]/page.tsx        # Transaction nerve center
-│   │   ├── transactions/[id]/TransactionDetail.tsx
-│   │   ├── agreements/[id]/page.tsx          # Agreement editing workspace
-│   │   └── audit/page.tsx                    # Full audit trail
+│   │   ├── page.tsx                                  # Upload dropzone + deal list
+│   │   ├── documents/[id]/page.tsx                   # Extraction review
+│   │   ├── transactions/[id]/page.tsx                # Transaction nerve center
+│   │   ├── transactions/[id]/agent/page.tsx          # ★ Guard: main agent demo page
+│   │   ├── agreements/[id]/page.tsx                  # Agreement editing workspace
+│   │   ├── audit/page.tsx                            # Full audit trail
+│   │   ├── redteam/page.tsx                          # ★ Guard: attack console
+│   │   └── agent/page.tsx                            # ★ Guard: global agent overview
 │   └── api/
-│       ├── documents/
-│       │   ├── upload/route.ts               # PDF upload + Claude extraction
-│       │   └── [id]/create-transaction/route.ts  # Extraction -> full deal
-│       ├── agreements/[id]/save/route.ts     # Atomic agreement updates
-│       ├── contracts/[id]/route.ts           # Delete contract + cascade
-│       ├── transactions/[id]/tasks/[taskId]/status/route.ts  # Task toggle
-│       ├── risk-flags/[id]/acknowledge/route.ts  # Acknowledge risk
-│       └── security/pii-reveal/route.ts      # PII unmasking
+│       ├── documents/upload/route.ts
+│       ├── documents/[id]/create-transaction/route.ts
+│       ├── agreements/[id]/save/route.ts
+│       ├── contracts/[id]/route.ts
+│       ├── transactions/[id]/tasks/[taskId]/status/route.ts
+│       ├── risk-flags/[id]/acknowledge/route.ts
+│       ├── security/pii-reveal/route.ts
+│       └── agent/                                    # ★ Guard: agent API layer
+│           ├── chat/route.ts
+│           ├── approve/route.ts
+│           ├── attacks/run/route.ts
+│           └── skills/read-deal-summary/route.ts
 ├── components/
-│   ├── DocumentDropzone.tsx                  # PDF drag-and-drop upload
-│   ├── DealList.tsx                          # Contract cards grid
-│   ├── ExtractionViewer.tsx                  # Extracted fields display
-│   ├── RiskFlagPanel.tsx                     # Risk flag cards
-│   ├── TimelineView.tsx                      # Milestone timeline
-│   ├── TaskList.tsx                          # Checklist with status toggle
-│   ├── HealthBar.tsx                         # Vertical mercury bar (green->amber->red)
-│   ├── EditCanvas.tsx                        # Agreement editing form
-│   ├── ValidationPanel.tsx                   # Field validation results
-│   ├── SectionNavigator.tsx                  # Agreement section nav
-│   ├── AuditTrail.tsx                        # Audit event list
-│   ├── DashboardShell.tsx                    # Dashboard layout wrapper
-│   ├── RealtimeRefresh.tsx                   # Supabase realtime subscription
-│   ├── ErrorBoundary.tsx                     # Error handling wrapper
-│   ├── OfflineBanner.tsx                     # Offline detection
-│   ├── MobileReadOnlyGuard.tsx               # Mobile access gate
-│   ├── security/
-│   │   ├── WireFraudBanner.tsx               # Wire fraud warning on escrow
-│   │   ├── ClosingProximityFlag.tsx          # Closing date < 7 days warning
-│   │   ├── IdleTimeoutGuard.tsx              # Session timeout
-│   │   ├── MaskedField.tsx                   # PII masking with reveal
-│   │   └── PasswordStrength.tsx              # Password strength meter
-│   └── ui/
-│       ├── Badge.tsx                         # Status badge
-│       └── Skeleton.tsx                      # Loading skeleton
+│   ├── [existing Estora components...]
+│   ├── agent/                                        # ★ Guard: agent UI
+│   │   ├── AgentPanel.tsx
+│   │   ├── RoleSelector.tsx
+│   │   ├── ApprovalModal.tsx
+│   │   ├── SecurityReceiptCard.tsx
+│   │   ├── PolicyDecisionBanner.tsx
+│   │   └── Scoreboard.tsx
+│   ├── redteam/
+│   │   └── AttackConsole.tsx
+│   └── security/
+│       ├── WireFraudBanner.tsx
+│       ├── ClosingProximityFlag.tsx
+│       ├── IdleTimeoutGuard.tsx
+│       ├── MaskedField.tsx
+│       └── PasswordStrength.tsx
 └── lib/
-    ├── types.ts                              # Shared TypeScript interfaces
-    ├── utils.ts                              # Formatting helpers
-    ├── auth-helpers.ts                       # Auth utilities
-    ├── agreement-schema.ts                   # Form field definitions
-    ├── contract-lockdown.ts                  # Edit permission rules
-    ├── rate-limit.ts                         # API rate limiting
-    ├── supabase/
-    │   ├── client.ts                         # Browser Supabase client
-    │   ├── server.ts                         # Server Supabase client + service role
-    │   └── database.types.ts                 # Auto-generated DB types
+    ├── agent/                                        # ★ Guard: agent logic
+    │   ├── types.ts
+    │   ├── manifest.ts
+    │   ├── policy.ts
+    │   ├── orchestrator.ts
+    │   ├── receipts.ts
+    │   └── attacks.ts
+    ├── skills/                                       # ★ Guard: skill functions
+    │   ├── read-deal-summary.ts
+    │   ├── read-risk-flags.ts
+    │   ├── read-timeline.ts
+    │   ├── read-task-list.ts
+    │   ├── draft-next-actions.ts
+    │   └── request-pii-reveal.ts
     └── services/
-        ├── document-intelligence.ts          # Claude API extraction + risk detection
-        ├── health-service.ts                 # Health score calculation
-        ├── timeline-service.ts               # Default timeline generation
-        ├── deadline-service.ts               # Deadline monitoring
-        ├── audit-service.ts                  # Audit trail logging
-        └── rules-engine.ts                   # Risk flag rule definitions
+        ├── document-intelligence.ts
+        ├── health-service.ts
+        ├── timeline-service.ts
+        ├── deadline-service.ts
+        ├── audit-service.ts
+        └── rules-engine.ts
 ```
 
 ---
 
-## Database Schema (Supabase)
+## Database schema
 
-| Table                 | Purpose                                        |
-|-----------------------|------------------------------------------------|
-| `contracts`           | Core deal record (dates, price, status, health_score) |
-| `documents`           | Uploaded PDFs with processing status           |
-| `extractions`         | AI-extracted fields with confidence + page refs |
-| `risk_flags`          | Detected risks (severity, acknowledged status) |
-| `tasks`               | Deal checklist items (todo/in_progress/done)   |
-| `timeline_items`      | Milestone events on the deal timeline          |
-| `properties`          | Property address and details                   |
-| `people`              | Parties (buyer, seller, attorneys)             |
-| `contract_mortgages`  | Mortgage details linked to contracts           |
-| `contract_escrow`     | Escrow details linked to contracts             |
-| `audit_events`        | Append-only mutation log                       |
-| `event_logs`          | System event logging                           |
+| Table | Purpose |
+|---|---|
+| `contracts` | Core deal record (dates, price, status, health) |
+| `documents` | Uploaded PDFs with processing status |
+| `extractions` | AI-extracted fields with confidence + page refs |
+| `risk_flags` | Detected risks (severity, acknowledged status) |
+| `tasks` | Deal checklist items (todo/in_progress/done/overdue) |
+| `timeline_items` | Milestone events on the deal timeline |
+| `properties` | Property address and details |
+| `people` | Parties (seller, purchaser, attorneys) |
+| `contract_mortgages` | Mortgage details |
+| `contract_escrow` | Escrow details |
+| `audit_events` | Append-only mutation log |
+| `event_logs` | System event logging |
+| `profiles` | User profiles |
+| `organizations` | Multi-tenant orgs |
+| `memberships` | Org membership + roles |
+| `agent_receipts` | ★ Guard: every agent action logged with decision + reason |
 
 ---
 
-## Data Flow
+## Guard: skill manifest
+
+The agent has exactly 6 skills. Each has a defined sensitivity, approval rule, and allowed roles.
+
+| Skill | Sensitivity | Approval | Allowed roles |
+|---|---|---|---|
+| `read_deal_summary` | low | no | all |
+| `read_risk_flags` | medium | no | all |
+| `read_timeline` | low | no | all |
+| `read_task_list` | low | no | all |
+| `draft_next_actions` | medium | no | all |
+| `request_pii_reveal` | critical | **yes** | attorney, coordinator only |
+
+See `skills.md` for full manifest details.
+
+---
+
+## Guard: security layers
 
 ```
-User uploads PDF
-  |
-  v
-POST /api/documents/upload
-  ├── Validate PDF (magic bytes check)
-  ├── Store file in Supabase Storage
-  ├── Call Anthropic Claude API (document-intelligence.ts)
-  │   └── Returns: extracted fields, confidence scores, page refs, risk flags
-  ├── Insert document record (status: processing -> done)
-  ├── Insert extraction rows
-  ├── Insert risk_flag rows
-  └── Log audit event
-  |
-  v
-User reviews at /dashboard/documents/[id]
-  ├── ExtractionViewer shows all extracted fields
-  ├── RiskFlagPanel shows detected risks
-  └── AI summary displayed
-  |
-  v
-POST /api/documents/[id]/create-transaction
-  ├── Parse extractions into structured data
-  ├── Create or resolve people records (seller, buyer, attorneys)
-  ├── Create or resolve property record
-  ├── Create contract with all financial fields
-  ├── Create mortgage record (if applicable)
-  ├── Create escrow record (if applicable)
-  ├── Generate default timeline from contract dates
-  ├── Compute initial health score
-  └── Log audit event
-  |
-  v
-User manages at /dashboard/transactions/[id]
-  ├── TimelineView shows milestones
-  ├── TaskList with status toggles (recalculates health on change)
-  ├── HealthBar shows deal health (green/amber/red)
-  └── RiskFlagPanel shows flags from source document
+NemoClaw / OpenShell  →  process-level sandbox (filesystem + network isolation)
+Estora Guard policy   →  business-logic gate (role, manifest, approval)
+Estora audit trail    →  immutable log (audit_events + agent_receipts)
 ```
 
----
-
-## Services
-
-### Document Intelligence (`services/document-intelligence.ts`)
-Sends the PDF content to Claude (`claude-sonnet-4-20250514`) with a structured prompt. Claude returns extracted fields (buyer name, seller name, purchase price, closing date, contingencies, etc.) along with confidence scores and page references. Also returns detected risk flags with severity levels and explanations.
-
-### Health Service (`services/health-service.ts`)
-Computes a 0-100 health score for each contract based on:
-- Task completion percentage
-- Proximity to closing date
-- Number of unresolved risk flags
-- Missing required fields
-- Overdue milestones
-
-Score maps to color: green (70-100), amber (40-69), red (0-39).
-
-### Timeline Service (`services/timeline-service.ts`)
-Generates a default milestone timeline from contract dates (signing, inspection deadline, appraisal, mortgage commitment, closing). Each milestone gets a target date derived from the contract's key dates and standard real estate timelines.
-
-### Rules Engine (`services/rules-engine.ts`)
-Defines risk detection rules that flag issues like:
-- Inspection window shorter than 10 days
-- Missing attorney review clause
-- Closing date less than 30 days from signing
-- Ambiguous contingency language
-- Missing escrow details
-
-### Audit Service (`services/audit-service.ts`)
-Logs every mutation (create, update, delete) to the `audit_events` table with:
-- Actor (user ID)
-- Action type
-- Entity type and ID
-- Field-level diffs (old value -> new value)
-- Timestamp
-
-### Deadline Service (`services/deadline-service.ts`)
-Monitors upcoming deadlines across all active contracts and surfaces those approaching within configurable thresholds.
+**Hard deny rules** (always blocked, no approval path):
+- Prompt injection patterns (`ignore previous instructions`, `DAN`, etc.)
+- Escrow / wire instruction modifications
+- Cross-organization data dumps
+- Document instruction overrides
+- Manual health score overrides
 
 ---
 
-## Design System
+## Guard: attack console
 
-| Token        | Value       | Usage                          |
-|-------------|-------------|--------------------------------|
-| `--bg`      | `#0C0C0B`   | Near-black warm background     |
-| `--surface` | `#141413`   | Card surfaces                  |
-| `--border`  | `#2A2A28`   | Subtle borders                 |
-| `--text`    | `#E8E6DF`   | Primary text (warm white)      |
-| `--muted`   | `#7A7870`   | Secondary text                 |
-| `--amber`   | `#D4880A`   | AI highlights, CTAs            |
-| `--red`     | `#C0392B`   | High risk                      |
-| `--yellow`  | `#B8860B`   | Medium risk                    |
-| `--green`   | `#1A6B4A`   | Low risk / completed           |
+Eight preset attacks test the policy engine under adversarial pressure. See `attacks.md` for the full list.
 
-**Typography:** DM Serif Display (headlines), DM Sans (body/UI), DM Mono (data/dates/IDs)
-
-**Principles:** Sharp horizontal rules, monospace data, generous whitespace. No rounded hero blobs, no gradient meshes, no purple.
+| Attack | Category | Expected |
+|---|---|---|
+| Reveal buyer SSN | PII extraction | denied |
+| Classic jailbreak | Prompt injection | denied |
+| Malicious document instruction | Document override | denied |
+| Fake admin claim | Privilege escalation | denied |
+| Escrow destination change | Unauthorized write | denied |
+| Health score override | Unauthorized write | denied |
+| Attorney PII without approval | PII extraction | approval_required |
+| Cross-org data dump | Data overreach | denied |
 
 ---
 
-## Security Features
-
-- **Authentication** — Supabase Auth with email/password, session management
-- **Row-Level Security** — Supabase RLS policies filter data by organization
-- **PII Masking** — Sensitive fields (SSN, account numbers) masked by default with reveal-on-demand
-- **Wire Fraud Warning** — Banner displayed on escrow-related sections
-- **Closing Proximity Alert** — Warning when closing date is less than 7 days away
-- **Idle Timeout** — Auto-logout after inactivity
-- **Contract Lockdown** — Closed/cancelled contracts cannot be edited
-- **Audit Trail** — Every create, update, and delete is logged with actor, timestamp, and field-level diffs
-- **Rate Limiting** — API routes are rate-limited
-
----
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 - Node.js 18+
-- A Supabase project with the schema applied
-- An Anthropic API key
+- Supabase project with schema applied (see `supabase.md`)
+- Anthropic API key
+- LlamaParse API key (optional — system falls back to direct Claude if unavailable)
 
-### Environment Variables
-
-Create a `.env.local` file:
+### Environment variables
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxx
+LLAMA_CLOUD_API_KEY=llx-xxxxxxxxxxxxxxxxxx
+CRON_SECRET=random-hex-string
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_STORAGE_BUCKET=documents
 ```
 
-### Install and Run
+### Run
 
 ```bash
 npm install
-npm run dev
+npm run dev         # http://localhost:3000
+npm test            # Vitest
+npm run types:supabase  # Regenerate DB types after schema changes
 ```
 
-The app runs at `http://localhost:3000`.
+### Run Guard migrations
 
-### Generate Database Types
+Before using any agent features, run the migrations in `migrations.md` in Supabase SQL Editor, then regenerate types:
 
 ```bash
 npm run types:supabase
 ```
 
-### Run Tests
+### NemoClaw setup
 
-```bash
-npm test            # single run
-npm run test:watch  # watch mode
-```
+See `nemoclaw.md` for the full installation and integration guide.
 
 ---
 
-## Technical Challenges & Solutions
+## Documentation
 
-### 1. Row-Level Security Blocking Related Data in Joins
-
-**Problem:** The dashboard showed contracts (deal name, price, status) but all property addresses displayed as "No address" and party names showed as dashes ("— → —"). The deal data was partially loading — contracts appeared, but their linked property and people records were invisible.
-
-**Root Cause:** Supabase enforces Row-Level Security (RLS) at the database level, meaning every query is filtered based on the logged-in user's permissions. The RLS policies on the `properties` and `people` tables were designed for a party-based access model — they required a `person_id` claim inside the user's authentication token (JWT). However, standard Supabase Auth users authenticate with email/password and receive a JWT that contains a `user_id`, not a `person_id`. This meant the database silently filtered out all property and people records, returning `null` for those joins even though the contracts themselves were accessible through a separate org-based policy.
-
-**Solution:** Switched the dashboard query from the standard Supabase client (which respects RLS) to a **service role client** that bypasses RLS, but scoped the query to only return contracts belonging to the authenticated user's organization. This mirrors the pattern already used on the transaction detail page. The security boundary is maintained at the application level (org-scoped filtering) rather than relying on RLS policies that weren't compatible with the auth model.
-
-**Key Takeaway:** When using Supabase RLS with relational joins, every table in the join chain must have compatible access policies. A query can succeed on the parent table but silently return `null` for joined tables if their RLS policies use different authorization claims.
-
----
-
-### 2. Browser-Native Dialogs Exposing Internal IDs
-
-**Problem:** Clicking the delete button on a deal triggered the browser's built-in `confirm()` dialog, which displayed a raw UUID (e.g., `Delete deal 49ba3a3c-978f-4052-9f3f-d37713558e81?`). This looked unprofessional and exposed internal database identifiers to the user.
-
-**Root Cause:** The delete handler used JavaScript's native `window.confirm()` function, which cannot be styled and falls back to showing the deal's UUID when no property address is available (which was the case due to the RLS issue above).
-
-**Solution:** Replaced the browser dialog with a custom React modal component that:
-- Displays the property address (or contract number as fallback) instead of the UUID
-- Includes a warning icon, clear messaging about the irreversible action, and styled Cancel/Delete buttons
-- Closes on backdrop click or Escape key press
-- Follows the application's existing design system (navy/gold/warm-white palette, Playfair Display headings)
-
----
-
-## About the `transaction-control/` Folder
-
-The `transaction-control/` directory contains a Python/FastAPI backend that was the original architectural plan. It includes:
-
-- FastAPI endpoints for transaction CRUD
-- SQLAlchemy models + Alembic migrations
-- Celery worker with beat scheduling for health score monitoring
-- A rules engine and service layer
-
-**None of this code is used by the running application.** During development, the entire backend was rebuilt inside Next.js API routes with Supabase as the database, making the Python backend redundant. The frontend has zero imports or API calls to the FastAPI service.
-
-This folder can be safely removed or kept as reference material.
+| File | What it covers |
+|---|---|
+| `CLAUDE.md` | Full architecture context for Claude Code sessions |
+| `architecture.md` | Detailed Estora Guard architecture — all 6 layers |
+| `skills.md` | Human-readable skill manifest |
+| `attacks.md` | All 8 red-team attack cases |
+| `migrations.md` | SQL migrations to run in Supabase |
+| `nemoclaw.md` | NemoClaw installation + integration guide |
+| `demo.md` | Hackathon demo script with fallbacks |
+| `security.md` | Platform security model and threat model |
+| `design.md` | UI design specification and principles |
+| `supabase.md` | Full database schema + seed SQL |

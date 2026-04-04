@@ -1,0 +1,17 @@
+egress:
+  allow:
+    # Estora Guard API (local development)
+    - host: localhost
+      ports: [3000]
+    # Estora Guard API (production — update to your actual URL)
+    # - host: your-estora-guard-app.vercel.app
+    #   ports: [443]
+    # Anthropic API (for draft_next_actions skill)
+    - host: api.anthropic.com
+      ports: [443]
+    # NVIDIA inference (for NemoClaw's own model)
+    - host: build.nvidia.com
+      ports: [443]
+  deny:
+    # Block everything else
+    - host: "*"

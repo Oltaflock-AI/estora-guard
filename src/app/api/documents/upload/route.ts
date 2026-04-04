@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { runExtraction, PdfValidationError, ExtractionError } from '@/lib/services/document-intelligence';
+import { runExtraction, PdfValidationError, ExtractionError, LlamaParseError } from '@/lib/services/document-intelligence';
 import { createAuditEvent } from '@/lib/services/audit-service';
 import type { Database } from '@/lib/supabase/database.types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-

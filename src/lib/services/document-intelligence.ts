@@ -3,6 +3,10 @@ import Anthropic from '@anthropic-ai/sdk';
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 const MAX_TOKENS = 4_000;
 
+const LLAMAPARSE_BASE_URL = 'https://api.cloud.llamaindex.ai/api';
+const LLAMAPARSE_POLL_INTERVAL_MS = 2_000;
+const LLAMAPARSE_MAX_POLLS = 20;
+
 export interface ExtractionField {
   fieldName: string;
   fieldValue: string | null;
@@ -23,6 +27,42 @@ export interface ExtractionResult {
   fields: ExtractionField[];
   riskFlags: RiskFlagResult[];
 }
+
+const TEXT_EXTRACTION_PROMPT = `You are an expert real estate attorney analyzing a New York Residential Contract of Sale. Extract all structured data from the contract text provided below.
+
+Return a JSON object with exactly two keys:
+
+1. "fields": an array of objects, each with:
+   - "fieldName": one of the field names listed below
+   - "fieldValue": the extracted value as a string (dates as YYYY-MM-DD, currency as plain numbers without $ or commas, booleans as "true"/"false")
+   - "confidence": a number 0.0-1.0 reflecting extraction certainty
+   - "pageRef": page number if identifiable, otherwise null
+
+2. "riskFlags": an array of objects, each with:
+   - "flagType": one of "tight_deadline", "missing_clause", "unusual_condition", "unclear_language", "material_defect"
+   - "severity": "low", "medium", or "high"
+   - "title": short title (max 80 chars)
+   - "explanation": 1-2 sentence explanation
+
+**Field names to extract (include all that are present):**
+
+Party fields: seller_first_name, seller_last_name, seller_email, seller_phone, seller_city, seller_masked_tax_id, purchaser_first_name, purchaser_last_name, purchaser_email, purchaser_phone, purchaser_city, purchaser_masked_tax_id, seller_attorney_name, purchaser_attorney_name
+
+Property fields: street_1, street_2, city, county, postal_code, property_type, bedrooms, bathrooms, year_built, legal_description, has_public_road_access, delivered_vacant, as_is_sale
+
+Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, acceptable_funds
+
+Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, escrow_required, commitment_received
+
+Date fields: contract_date, closing_date, commitment_date, inspection_deadline, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
+
+Condition fields: subject_to_mortgage_contingency, seller_has_right_to_sell, seller_not_foreign_person, no_undisclosed_abatements, title_insurable, premises_broom_clean, systems_in_working_order, smoke_detector_affidavit_required, certificate_of_occupancy_required, firpta_cert_required
+
+Escrow fields: escrow_agent_name, bank_name, account_reference, amount_held, segregated_account
+
+Title fields: title_company_name
+
+Return ONLY valid JSON. No markdown fences, no commentary.`;
 
 const EXTRACTION_PROMPT = `You are an expert real estate attorney analyzing a New York Residential Contract of Sale. Extract all structured data from the attached PDF document.
 
@@ -84,13 +124,160 @@ export class ExtractionError extends Error {
   }
 }
 
+export class LlamaParseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LlamaParseError';
+  }
+}
+
 function stripMarkdownFences(raw: string): string {
   return raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
 }
 
-export async function runExtraction(pdfBuffer: Buffer): Promise<ExtractionResult> {
-  validatePdfBytes(pdfBuffer);
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+export async function parsePdfWithLlamaParse(pdfBuffer: Buffer): Promise<string> {
+  const apiKey = process.env.LLAMA_CLOUD_API_KEY;
+  if (!apiKey) {
+    throw new LlamaParseError('LLAMA_CLOUD_API_KEY is not set.');
+  }
+
+  const headers = { Authorization: `Bearer ${apiKey}` };
+
+  // Step 1: Upload file
+  const formData = new FormData();
+  const blob = new Blob([new Uint8Array(pdfBuffer)], { type: 'application/pdf' });
+  formData.append('file', blob, 'contract.pdf');
+
+  const uploadRes = await fetch(`${LLAMAPARSE_BASE_URL}/v1/files/`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!uploadRes.ok) {
+    const body = await uploadRes.text().catch(() => '');
+    throw new LlamaParseError(`File upload failed (${uploadRes.status}): ${body}`);
+  }
+
+  const uploadData = (await uploadRes.json()) as { id: string };
+  const fileId = uploadData.id;
+  if (!fileId) {
+    throw new LlamaParseError('LlamaParse upload did not return a file_id.');
+  }
+
+  // Step 2: Create parse job
+  const parseRes = await fetch(`${LLAMAPARSE_BASE_URL}/v2/parse/`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file_id: fileId, config: { result_type: 'markdown' } }),
+  });
+
+  if (!parseRes.ok) {
+    const body = await parseRes.text().catch(() => '');
+    throw new LlamaParseError(`Parse job creation failed (${parseRes.status}): ${body}`);
+  }
+
+  const parseData = (await parseRes.json()) as { id: string };
+  const jobId = parseData.id;
+  if (!jobId) {
+    throw new LlamaParseError('LlamaParse did not return a job_id.');
+  }
+
+  // Step 3: Poll for completion
+  for (let poll = 0; poll < LLAMAPARSE_MAX_POLLS; poll++) {
+    await sleep(LLAMAPARSE_POLL_INTERVAL_MS);
+
+    const statusRes = await fetch(`${LLAMAPARSE_BASE_URL}/v2/parse/${jobId}`, {
+      headers,
+    });
+
+    if (!statusRes.ok) {
+      throw new LlamaParseError(`Poll request failed (${statusRes.status}).`);
+    }
+
+    const statusData = (await statusRes.json()) as { status: string };
+
+    if (statusData.status === 'completed') {
+      // Step 4: Get result
+      const resultRes = await fetch(
+        `${LLAMAPARSE_BASE_URL}/v2/parse/${jobId}/result/markdown`,
+        { headers }
+      );
+
+      if (!resultRes.ok) {
+        throw new LlamaParseError(`Result fetch failed (${resultRes.status}).`);
+      }
+
+      const resultData = (await resultRes.json()) as { markdown: string };
+      return resultData.markdown ?? '';
+    }
+
+    if (statusData.status === 'failed' || statusData.status === 'error') {
+      throw new LlamaParseError(`Parse job failed with status: ${statusData.status}`);
+    }
+  }
+
+  throw new LlamaParseError(
+    `LlamaParse polling timed out after ${LLAMAPARSE_MAX_POLLS * LLAMAPARSE_POLL_INTERVAL_MS / 1000}s.`
+  );
+}
+
+async function runTextExtraction(text: string): Promise<ExtractionResult> {
+  const client = new Anthropic();
+
+  let responseText = '';
+  let retries = 0;
+
+  while (retries < 2) {
+    const message = await client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: MAX_TOKENS,
+      messages: [
+        {
+          role: 'user',
+          content: `${TEXT_EXTRACTION_PROMPT}\n\n---\n\n${text}`,
+        },
+      ],
+    });
+
+    const block = message.content[0];
+    if (block.type !== 'text') {
+      throw new ExtractionError('Claude returned non-text content.');
+    }
+    responseText = stripMarkdownFences(block.text);
+
+    try {
+      const parsed = JSON.parse(responseText) as {
+        fields: ExtractionField[];
+        riskFlags: RiskFlagResult[];
+      };
+
+      const summary = buildSummary(parsed.fields);
+
+      return {
+        rawText: text,
+        summary,
+        fields: parsed.fields ?? [],
+        riskFlags: parsed.riskFlags ?? [],
+      };
+    } catch {
+      retries++;
+      if (retries >= 2) {
+        throw new ExtractionError(
+          `Claude returned malformed JSON after ${retries} attempts.`
+        );
+      }
+    }
+  }
+
+  throw new ExtractionError('Text extraction failed unexpectedly.');
+}
+
+async function runDirectExtraction(pdfBuffer: Buffer): Promise<ExtractionResult> {
   const client = new Anthropic();
   const pdfBase64 = pdfBuffer.toString('base64');
 
@@ -153,6 +340,27 @@ export async function runExtraction(pdfBuffer: Buffer): Promise<ExtractionResult
   }
 
   throw new ExtractionError('Extraction failed unexpectedly.');
+}
+
+export async function runExtraction(pdfBuffer: Buffer): Promise<ExtractionResult> {
+  validatePdfBytes(pdfBuffer);
+
+  try {
+    const markdown = await parsePdfWithLlamaParse(pdfBuffer);
+
+    if (markdown.length < 50) {
+      console.warn('LlamaParse returned insufficient text, falling back to direct PDF extraction.');
+      return runDirectExtraction(pdfBuffer);
+    }
+
+    return await runTextExtraction(markdown);
+  } catch (err) {
+    if (err instanceof ExtractionError) {
+      throw err;
+    }
+    console.warn('LlamaParse pre-processing failed, falling back to direct PDF extraction:', err);
+    return runDirectExtraction(pdfBuffer);
+  }
 }
 
 function buildSummary(fields: ExtractionField[]): string {
