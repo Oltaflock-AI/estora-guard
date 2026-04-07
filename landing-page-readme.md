@@ -206,11 +206,10 @@ Portfolio visibility without chasing updates; health scores; escalations before 
 
 Use 4–6 items; keep answers short.
 
-1. **What is Estora vs Estora Guard?** — Estora is the platform (contracts, deals, timeline, health, audit). Guard is the policy-governed AI layer on top.  
-2. **Will the agent change wire or escrow instructions?** — No. Hard-denied and logged.  
-3. **Who gets access first?** — Coordinators, attorneys, brokerage ops—roles that run volume.  
-4. **Is my email shared?** — No; waitlist only for Estora updates.  
-5. **What integrations exist today?** — Focus is core transaction intelligence; roadmap includes MLS and orchestration (see Vision).  
+1. **Will the agent change wire or escrow instructions?** — No. Hard-denied and logged.  
+2. **Who gets access first?** — Coordinators, attorneys, brokerage ops—roles that run volume.  
+3. **Is my email shared?** — No; waitlist only for Estora updates.  
+4. **What integrations exist today?** — Focus is core transaction intelligence; roadmap includes MLS and orchestration (see Vision).  
 
 ---
 

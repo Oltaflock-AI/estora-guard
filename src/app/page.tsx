@@ -9,6 +9,7 @@ import {
   Shield,
 } from 'lucide-react';
 import EstoraWaitlistForm from '@/components/marketing/EstoraWaitlistForm';
+import LandingHeroCardStack from '@/components/marketing/LandingHeroCardStack';
 import RevealSection from '@/components/marketing/RevealSection';
 import { isWaitlistOnly } from '@/lib/waitlist';
 
@@ -53,10 +54,6 @@ const hardDenies = [
 ] as const;
 
 const faqItems = [
-  {
-    q: 'What is Estora versus Estora Guard?',
-    a: 'Estora is the transaction platform—contract intelligence, deal management, timeline, health, and audit. Estora Guard is the policy-governed AI layer on top: a constrained agent, approval gates for sensitive data, receipts on every action, and hard blocks on dangerous requests.',
-  },
   {
     q: 'Will the agent change wire or escrow instructions?',
     a: 'No. That class of change is hard-denied at the policy layer with no approval path. The attempt is logged like every other agent action.',
@@ -158,45 +155,7 @@ export default function HomePage() {
               className="landing-hero-mock relative flex min-h-[280px] items-center justify-center md:min-h-[360px]"
               aria-hidden
             >
-              <div className="relative w-full max-w-[400px]">
-                <div className="landing-mock-back-card card absolute -bottom-6 -left-4 z-0 w-[88%] -rotate-2 border-border p-4 shadow-card">
-                  <p className="text-xs text-secondary">Timeline · Tasks · Health at a glance</p>
-                  <div className="mt-3 flex gap-1.5">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold/50" />
-                    <span className="h-1.5 w-8 shrink-0 rounded-full bg-gold/25" />
-                    <span className="h-1.5 w-12 shrink-0 rounded-full bg-border" />
-                  </div>
-                </div>
-                <div className="landing-mock-enter relative z-10">
-                  <div className="landing-mock-float">
-                    <div className="card rotate-1 border-gold/25 p-5 shadow-modal">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <span className="font-mono text-[11px] uppercase tracking-wider text-secondary">Deal health</span>
-                      <span className="landing-health-score rounded-full border border-gold/30 bg-gold-light/50 px-2.5 py-0.5 font-mono text-xs font-medium text-navy">
-                        74 / 100
-                      </span>
-                    </div>
-                    <div className="landing-timeline-blur landing-timeline-rows space-y-2">
-                      <div className="landing-timeline-track w-full">
-                        <div className="landing-timeline-bar w-full" />
-                      </div>
-                      <div className="landing-timeline-track w-[88%]">
-                        <div className="landing-timeline-bar w-full" />
-                      </div>
-                      <div className="landing-timeline-track w-[72%]">
-                        <div className="landing-timeline-bar w-full" />
-                      </div>
-                    </div>
-                    <div className="landing-risk-flag relative -mt-14 rounded-lg border border-error/25 bg-surface-raised p-3 shadow-card">
-                      <p className="font-mono text-[11px] uppercase tracking-wider text-error">Risk flag</p>
-                      <p className="mt-1 font-display text-sm font-semibold text-navy">
-                        HIGH — Missing contingency removal date
-                      </p>
-                    </div>
-                  </div>
-                  </div>
-                </div>
-              </div>
+              <LandingHeroCardStack />
             </div>
           </div>
         </section>

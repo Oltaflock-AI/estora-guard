@@ -420,6 +420,11 @@
   animation: landingBarGrow 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+.landing-estora-light .landing-timeline-bar--static {
+  animation: none !important;
+  transform: scaleX(1) !important;
+}
+
 .landing-estora-light .landing-timeline-rows > div:nth-child(1) .landing-timeline-bar {
   animation-delay: 0.45s;
 }
@@ -458,6 +463,17 @@
 .landing-estora-light .landing-risk-flag {
   opacity: 0;
   animation: landingRiskReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.95s forwards;
+}
+
+.landing-estora-light .landing-risk-flag--static {
+  opacity: 1;
+  animation: none;
+}
+
+.landing-estora-light .landing-timeline-blur--static {
+  animation: none !important;
+  filter: blur(2.5px) !important;
+  opacity: 0.9 !important;
 }
 
 @keyframes landingRiskReveal {
@@ -519,5 +535,26 @@
     animation: none !important;
     filter: blur(2.5px) !important;
     opacity: 1 !important;
+  }
+
+  .landing-estora-light .landing-back-pulse {
+    animation: none !important;
+  }
+}
+
+/* ── Hero card stack: subtle pulse on back-card dot ── */
+.landing-estora-light .landing-back-pulse {
+  animation: landingBackDotPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes landingBackDotPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
   }
 }
