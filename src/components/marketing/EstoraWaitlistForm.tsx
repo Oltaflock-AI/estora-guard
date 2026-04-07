@@ -99,14 +99,14 @@ export default function EstoraWaitlistForm({
     if (mode === 'full') {
       return (
         <div
-          className={`rounded-lg border border-[var(--lp-accent)]/25 bg-[var(--lp-surface-hi)] px-5 py-6 text-[15px] leading-relaxed text-[var(--lp-text)] ${className}`}
+          className={`rounded-lg border border-success/30 bg-green-50/90 px-5 py-6 text-[15px] leading-relaxed text-primary ${className}`}
           role="status"
         >
-          <p className="font-display text-lg font-semibold text-[var(--lp-text)]">You&apos;re on the list.</p>
-          <p className="mt-3 text-[var(--lp-text-secondary)]">
+          <p className="font-display text-lg font-semibold text-navy">You&apos;re on the list.</p>
+          <p className="mt-3 text-secondary">
             We review every submission personally and will be in touch when early access opens for your role.
           </p>
-          <p className="mt-3 text-sm text-[var(--lp-text-secondary)]">
+          <p className="mt-3 text-sm text-secondary">
             In the meantime — if you want to tell us more about how you work, reply to our confirmation email.
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function EstoraWaitlistForm({
     }
     return (
       <div
-        className={`rounded-lg border border-[var(--lp-accent)]/25 bg-[var(--lp-surface-hi)] px-4 py-3 text-sm text-[var(--lp-text)] ${className}`}
+        className={`rounded-lg border border-success/30 bg-green-50/80 px-4 py-3 text-sm text-primary ${className}`}
         role="status"
       >
         {message}
@@ -138,12 +138,12 @@ export default function EstoraWaitlistForm({
             placeholder="Work email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="lp-input min-h-[48px] flex-1"
+            className="field-input min-h-[48px] flex-1"
             disabled={status === 'loading'}
           />
           <button
             type="submit"
-            className="lp-cta min-h-[48px] inline-flex shrink-0 items-center justify-center gap-2 px-6 text-sm font-medium"
+            className="btn-gold min-h-[48px] inline-flex shrink-0 items-center justify-center gap-2 px-6 text-sm font-medium"
             disabled={status === 'loading'}
           >
             {status === 'loading' ? (
@@ -157,11 +157,11 @@ export default function EstoraWaitlistForm({
           </button>
         </div>
         {status === 'error' && message && (
-          <p className="text-sm text-[var(--lp-guard)]" role="alert">
+          <p className="text-sm text-error" role="alert">
             {message}
           </p>
         )}
-        <p className="text-xs text-[var(--lp-text-muted)]">
+        <p className="text-xs text-secondary">
           No spam — early access updates only. We use your email only for Estora waitlist communication.
         </p>
       </form>
@@ -172,7 +172,7 @@ export default function EstoraWaitlistForm({
     <form onSubmit={handleSubmit} className={`flex flex-col gap-4 ${className}`}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <label htmlFor="estora-wl-name" className="lp-label">
+          <label htmlFor="estora-wl-name" className="field-label">
             Full name
           </label>
           <input
@@ -183,12 +183,12 @@ export default function EstoraWaitlistForm({
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="lp-input min-h-[44px]"
+            className="field-input min-h-[44px]"
             disabled={status === 'loading'}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor="estora-wl-email" className="lp-label">
+          <label htmlFor="estora-wl-email" className="field-label">
             Work email
           </label>
           <input
@@ -199,13 +199,13 @@ export default function EstoraWaitlistForm({
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="lp-input min-h-[44px]"
+            className="field-input min-h-[44px]"
             disabled={status === 'loading'}
           />
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="estora-wl-role" className="lp-label">
+        <label htmlFor="estora-wl-role" className="field-label">
           Role
         </label>
         <select
@@ -214,7 +214,7 @@ export default function EstoraWaitlistForm({
           required
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="lp-input lp-select min-h-[44px]"
+          className="field-select min-h-[44px]"
           disabled={status === 'loading'}
         >
           {ROLE_OPTIONS.map((o) => (
@@ -226,8 +226,8 @@ export default function EstoraWaitlistForm({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <label htmlFor="estora-wl-company" className="lp-label">
-            Brokerage or company <span className="text-[var(--lp-text-muted)]">(optional)</span>
+          <label htmlFor="estora-wl-company" className="field-label">
+            Brokerage or company <span className="normal-case tracking-normal text-disabled">(optional)</span>
           </label>
           <input
             id="estora-wl-company"
@@ -236,20 +236,20 @@ export default function EstoraWaitlistForm({
             autoComplete="organization"
             value={company}
             onChange={(e) => setCompany(e.target.value)}
-            className="lp-input min-h-[44px]"
+            className="field-input min-h-[44px]"
             disabled={status === 'loading'}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor="estora-wl-deals" className="lp-label">
-            Active transactions <span className="text-[var(--lp-text-muted)]">(optional)</span>
+          <label htmlFor="estora-wl-deals" className="field-label">
+            Active transactions <span className="normal-case tracking-normal text-disabled">(optional)</span>
           </label>
           <select
             id="estora-wl-deals"
             name="active_deals"
             value={activeDeals}
             onChange={(e) => setActiveDeals(e.target.value)}
-            className="lp-input lp-select min-h-[44px]"
+            className="field-select min-h-[44px]"
             disabled={status === 'loading'}
           >
             {DEAL_VOLUME_OPTIONS.map((o) => (
@@ -261,8 +261,8 @@ export default function EstoraWaitlistForm({
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="estora-wl-pain" className="lp-label">
-          Biggest operational pain point <span className="text-[var(--lp-text-muted)]">(optional)</span>
+        <label htmlFor="estora-wl-pain" className="field-label">
+          Biggest operational pain point <span className="normal-case tracking-normal text-disabled">(optional)</span>
         </label>
         <textarea
           id="estora-wl-pain"
@@ -271,19 +271,19 @@ export default function EstoraWaitlistForm({
           maxLength={500}
           value={painPoint}
           onChange={(e) => setPainPoint(e.target.value)}
-          className="lp-input min-h-[88px] resize-y py-2"
+          className="field-input min-h-[88px] resize-y py-2"
           placeholder="Short answer is fine."
           disabled={status === 'loading'}
         />
       </div>
       {status === 'error' && message && (
-        <p className="text-sm text-[var(--lp-guard)]" role="alert">
+        <p className="text-sm text-error" role="alert">
           {message}
         </p>
       )}
       <button
         type="submit"
-        className="lp-cta mt-1 inline-flex min-h-[48px] items-center justify-center gap-2 self-start px-8 text-sm font-medium"
+        className="btn-gold mt-1 inline-flex min-h-[48px] items-center justify-center gap-2 self-start px-8 text-sm font-medium"
         disabled={status === 'loading'}
       >
         {status === 'loading' ? (
@@ -295,7 +295,7 @@ export default function EstoraWaitlistForm({
           </>
         )}
       </button>
-      <p className="text-xs text-[var(--lp-text-muted)]">
+      <p className="text-xs text-secondary">
         No product demos. No sales calls unless you want one. We&apos;ll reach out directly.
       </p>
     </form>

@@ -67,6 +67,12 @@
            text-sm text-secondary cursor-default;
   }
 
+  .field-select {
+    @apply field-input appearance-none bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666058' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 12px center;
+  }
+
   .btn-primary {
     @apply h-field-height px-6 bg-navy text-white text-sm font-medium rounded-md
            hover:bg-navy-light focus:outline-none focus:shadow-focus-gold
@@ -249,109 +255,26 @@
   }
 }
 
-/* ── Estora marketing landing (dark) — see landing-page-readme.md ── */
-.landing-estora {
-  --lp-bg: #09090d;
-  --lp-surface: #0f0f16;
-  --lp-surface-hi: #16161f;
-  --lp-text: #eae5da;
-  --lp-text-secondary: #7a7690;
-  --lp-text-muted: #3d3b50;
-  --lp-accent: #b8956a;
-  --lp-accent-dim: #7a5f3e;
-  --lp-guard: #8b3a3a;
-  --lp-guard-dim: #5c2828;
-  --lp-border: rgba(255, 255, 255, 0.06);
-  background-color: var(--lp-bg);
-  color: var(--lp-text);
+/* ── Estora marketing landing (light) — scroll reveals + hero entrance ── */
+.landing-estora-light {
   scroll-padding-top: 5rem;
 }
 
-.landing-estora .lp-input {
-  width: 100%;
-  border-radius: 6px;
-  border: 1px solid var(--lp-border);
-  background: var(--lp-surface-hi);
-  color: var(--lp-text);
-  font-size: 15px;
-  line-height: 1.4;
-  padding: 0 14px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.landing-estora .lp-input::placeholder {
-  color: var(--lp-text-muted);
-}
-
-.landing-estora .lp-input:focus {
-  outline: none;
-  border-color: rgba(184, 149, 106, 0.45);
-  box-shadow: 0 0 0 3px rgba(184, 149, 106, 0.18);
-}
-
-.landing-estora .lp-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237A7690' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 40px;
-}
-
-.landing-estora .lp-label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--lp-text-secondary);
-}
-
-.landing-estora .lp-cta {
-  border-radius: 6px;
-  background: var(--lp-accent);
-  color: #09090d;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
-  animation: lpCtaPulse 3.5s ease-in-out infinite;
-}
-
-.landing-estora .lp-cta:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: scale(1.02);
-  box-shadow: 0 8px 28px rgba(184, 149, 106, 0.22);
-}
-
-.landing-estora .lp-cta:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  animation: none;
-}
-
-@keyframes lpCtaPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(184, 149, 106, 0);
-  }
-  50% {
-    box-shadow: 0 0 20px 2px rgba(184, 149, 106, 0.12);
-  }
-}
-
-.landing-estora .lp-hero-line {
+.landing-estora-light .lp-hero-line {
   opacity: 0;
   animation: lpHeroLine 0.65s ease forwards;
 }
 
-.landing-estora .lp-hero-line-2 {
+.landing-estora-light .lp-hero-line-2 {
   animation-delay: 0.14s;
 }
 
-.landing-estora .lp-hero-sub {
+.landing-estora-light .lp-hero-sub {
   opacity: 0;
   animation: lpHeroLine 0.65s ease 0.32s forwards;
 }
 
-.landing-estora .lp-hero-cta {
+.landing-estora-light .lp-hero-cta {
   opacity: 0;
   animation: lpHeroLine 0.65s ease 0.5s forwards;
 }
@@ -367,38 +290,38 @@
   }
 }
 
-.landing-estora .reveal-section {
+.landing-estora-light .reveal-section {
   opacity: 0;
   transform: translateY(24px);
   transition: opacity 0.65s ease, transform 0.65s ease;
 }
 
-.landing-estora .reveal-section.is-visible {
+.landing-estora-light .reveal-section.is-visible {
   opacity: 1;
   transform: translateY(0);
 }
 
-.landing-estora .guard-deny-stagger > li {
+.landing-estora-light .guard-deny-stagger > li {
   opacity: 0;
 }
 
-.landing-estora .reveal-section.is-visible .guard-deny-stagger > li {
+.landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li {
   animation: lpDenyLine 0.4s ease forwards;
 }
 
-.landing-estora .reveal-section.is-visible .guard-deny-stagger > li:nth-child(1) {
+.landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li:nth-child(1) {
   animation-delay: 20ms;
 }
-.landing-estora .reveal-section.is-visible .guard-deny-stagger > li:nth-child(2) {
+.landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li:nth-child(2) {
   animation-delay: 45ms;
 }
-.landing-estora .reveal-section.is-visible .guard-deny-stagger > li:nth-child(3) {
+.landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li:nth-child(3) {
   animation-delay: 70ms;
 }
-.landing-estora .reveal-section.is-visible .guard-deny-stagger > li:nth-child(4) {
+.landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li:nth-child(4) {
   animation-delay: 95ms;
 }
-.landing-estora .reveal-section.is-visible .guard-deny-stagger > li:nth-child(5) {
+.landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li:nth-child(5) {
   animation-delay: 120ms;
 }
 
@@ -414,26 +337,22 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-estora .lp-hero-line,
-  .landing-estora .lp-hero-sub,
-  .landing-estora .lp-hero-cta {
+  .landing-estora-light .lp-hero-line,
+  .landing-estora-light .lp-hero-sub,
+  .landing-estora-light .lp-hero-cta {
     animation: none;
     opacity: 1;
     transform: none;
   }
 
-  .landing-estora .lp-cta {
-    animation: none;
-  }
-
-  .landing-estora .reveal-section {
+  .landing-estora-light .reveal-section {
     opacity: 1;
     transform: none;
     transition: none;
   }
 
-  .landing-estora .guard-deny-stagger > li,
-  .landing-estora .reveal-section.is-visible .guard-deny-stagger > li {
+  .landing-estora-light .guard-deny-stagger > li,
+  .landing-estora-light .reveal-section.is-visible .guard-deny-stagger > li {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
