@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkRateLimit, rateLimitKey, RATE_LIMITS } from '@/lib/rate-limit';
+import { isWaitlistOnly } from '@/lib/waitlist';
 
 function getClientIp(request: NextRequest): string {
   return (
@@ -50,13 +51,49 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 
 function rateLimitBucket(pathname: string): string {
   if (pathname === '/login' || pathname.startsWith('/api/auth/')) return 'login';
+  if (pathname === '/api/waitlist') return 'waitlist';
   if (pathname.includes('/pii-reveal')) return 'piiReveal';
   if (pathname.includes('/upload')) return 'upload';
   if (pathname.includes('/export')) return 'export';
   return 'general';
 }
 
+function allowWaitlistPublicPath(pathname: string, method: string): boolean {
+  if (pathname.startsWith('/_next/')) return true;
+  if (pathname === '/favicon.ico') return true;
+  if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$/i.test(pathname)) return true;
+  if (pathname === '/') return true;
+  if (pathname === '/api/waitlist' && (method === 'POST' || method === 'OPTIONS')) return true;
+  return false;
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const method = request.method;
+  const waitlistOnly = isWaitlistOnly();
+
+  if (waitlistOnly && !allowWaitlistPublicPath(pathname, method)) {
+    if (pathname.startsWith('/api/')) {
+      return addSecurityHeaders(
+        NextResponse.json({ error: 'Not available during waitlist.' }, { status: 404 })
+      );
+    }
+    const home = request.nextUrl.clone();
+    home.pathname = '/';
+    home.search = '';
+    return addSecurityHeaders(NextResponse.redirect(home));
+  }
+
+  if (
+    waitlistOnly &&
+    (pathname === '/' ||
+      pathname.startsWith('/_next/') ||
+      pathname === '/favicon.ico' ||
+      /\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$/i.test(pathname))
+  ) {
+    return addSecurityHeaders(NextResponse.next({ request }));
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -83,8 +120,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   const isAuthPage =
     pathname === '/login' ||
@@ -129,9 +164,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isApiRoute && !user) {
-    return addSecurityHeaders(
-      NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    );
+    const waitlistApiBypass =
+      waitlistOnly && pathname === '/api/waitlist' && (method === 'POST' || method === 'OPTIONS');
+    if (!waitlistApiBypass) {
+      return addSecurityHeaders(
+        NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+      );
+    }
   }
 
   if (!user && isDashboard) {

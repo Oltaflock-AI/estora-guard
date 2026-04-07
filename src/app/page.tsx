@@ -12,6 +12,11 @@ import {
   Sparkles,
   Terminal,
 } from 'lucide-react';
+import WaitlistForm from '@/components/marketing/WaitlistForm';
+import { isWaitlistOnly } from '@/lib/waitlist';
+
+/** Read `WAITLIST_ONLY` at request time so deploy env can flip without a rebuild. */
+export const dynamic = 'force-dynamic';
 
 const trustPoints = [
   'Append-only audit trail on every change',
@@ -62,7 +67,7 @@ const steps = [
   { step: '4', title: 'Ask Estora Guard', detail: 'Chat with the agent; every invocation is policy-checked and receipt-logged.' },
 ];
 
-const faqItems = [
+const faqItemsBase = [
   {
     q: 'What is Estora versus Estora Guard?',
     a: 'Estora is the transaction intelligence platform—extraction, risks, timeline, health, and audit. Guard is the AI layer: a chat agent plus a policy engine, approvals for sensitive actions, receipts, and a red-team console.',
@@ -81,7 +86,15 @@ const faqItems = [
   },
 ];
 
+const faqWaitlistItem = {
+  q: 'Why a waitlist?',
+  a: 'We are finishing the production backend and onboarding flow. Joining the list reserves your spot for early access and product updates—no obligation.',
+};
+
 export default function HomePage() {
+  const waitlist = isWaitlistOnly();
+  const faqItems = waitlist ? [...faqItemsBase, faqWaitlistItem] : faqItemsBase;
+
   return (
     <div className="min-h-screen bg-surface">
       <header className="sticky top-0 z-50 border-b border-border bg-surface-raised/95 backdrop-blur-sm">
@@ -91,6 +104,11 @@ export default function HomePage() {
             <span className="ml-2 text-sm font-sans font-medium text-gold">Guard</span>
           </Link>
           <nav className="hidden items-center gap-8 text-sm font-medium text-secondary md:flex" aria-label="Page sections">
+            {waitlist && (
+              <a href="#waitlist" className="hover:text-primary transition-colors">
+                Waitlist
+              </a>
+            )}
             <a href="#problem" className="hover:text-primary transition-colors">
               Why Estora
             </a>
@@ -105,12 +123,20 @@ export default function HomePage() {
             </a>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
-            <Link href="/login" className="btn-secondary !h-9 !px-4 text-xs md:text-sm">
-              Sign in
-            </Link>
-            <Link href="/signup" className="btn-gold !h-9 !px-4 text-xs md:text-sm">
-              Get started
-            </Link>
+            {waitlist ? (
+              <a href="#waitlist" className="btn-gold !h-9 !px-4 text-xs md:text-sm">
+                Join waitlist
+              </a>
+            ) : (
+              <>
+                <Link href="/login" className="btn-secondary !h-9 !px-4 text-xs md:text-sm">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="btn-gold !h-9 !px-4 text-xs md:text-sm">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -129,18 +155,25 @@ export default function HomePage() {
                 Close faster with contract intelligence and an AI agent you can actually trust
               </h1>
               <p className="mt-5 text-lg text-secondary leading-relaxed">
-                Turn purchase agreements into living transactions—then ask Estora Guard questions with a manifest-driven
-                firewall, human approval for sensitive actions, and a receipt for every attempt.
+                {waitlist
+                  ? 'We are opening early access soon. Join the waitlist for launch updates and a first look at Estora Guard—contract intelligence plus a policy-governed agent layer.'
+                  : 'Turn purchase agreements into living transactions—then ask Estora Guard questions with a manifest-driven firewall, human approval for sensitive actions, and a receipt for every attempt.'}
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <Link href="/signup" className="btn-gold gap-2">
-                  Create your account
-                  <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-                </Link>
-                <a href="#platform" className="btn-secondary">
-                  See how it works
-                </a>
-              </div>
+              {waitlist ? (
+                <div id="waitlist" className="mt-8 scroll-mt-28">
+                  <WaitlistForm source="landing-hero" />
+                </div>
+              ) : (
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <Link href="/signup" className="btn-gold gap-2">
+                    Create your account
+                    <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  </Link>
+                  <a href="#platform" className="btn-secondary">
+                    See how it works
+                  </a>
+                </div>
+              )}
               <ul className="mt-10 flex flex-col gap-2 text-sm text-secondary sm:flex-row sm:flex-wrap sm:gap-x-6">
                 {trustPoints.map((t) => (
                   <li key={t} className="flex items-center gap-2">
@@ -236,13 +269,23 @@ export default function HomePage() {
                   command.
                 </p>
               </div>
-              <Link
-                href="/signup"
-                className="inline-flex h-field-height shrink-0 items-center justify-center gap-2 rounded-md bg-gold px-6 text-sm font-medium text-white hover:brightness-110 focus:outline-none focus:shadow-focus-gold transition-all"
-              >
-                <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
-                Try the full flow
-              </Link>
+              {waitlist ? (
+                <a
+                  href="#waitlist"
+                  className="inline-flex h-field-height shrink-0 items-center justify-center gap-2 rounded-md bg-gold px-6 text-sm font-medium text-white hover:brightness-110 focus:outline-none focus:shadow-focus-gold transition-all"
+                >
+                  <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  Join the waitlist
+                </a>
+              ) : (
+                <Link
+                  href="/signup"
+                  className="inline-flex h-field-height shrink-0 items-center justify-center gap-2 rounded-md bg-gold px-6 text-sm font-medium text-white hover:brightness-110 focus:outline-none focus:shadow-focus-gold transition-all"
+                >
+                  <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  Try the full flow
+                </Link>
+              )}
             </div>
             <div className="grid gap-6 md:grid-cols-3">
               {guardBenefits.map(({ icon: Icon, title, body }) => (
@@ -278,21 +321,36 @@ export default function HomePage() {
         {/* Final CTA + FAQ */}
         <section id="faq" className="mx-auto max-w-6xl px-6 py-16 md:py-20">
           <div className="card border-gold/25 bg-gradient-to-br from-surface-raised to-gold-light/20 p-8 md:p-10">
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-navy md:text-3xl">
-                  Ready to run the next closing with guardrails?
-                </h2>
-                <p className="mt-2 max-w-xl text-secondary">
-                  Sign up, upload a contract, create a transaction, then open the agent and red-team console—without
-                  breaking the core deal workflow.
-                </p>
+            {waitlist ? (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <h2 className="font-display text-2xl font-semibold text-navy md:text-3xl">
+                    Get notified when we open access
+                  </h2>
+                  <p className="mt-2 max-w-xl text-secondary">
+                    Leave your email and we will reach out when the product is ready for your team—screenshots and a
+                    short demo will land in your inbox first.
+                  </p>
+                </div>
+                <WaitlistForm source="landing-footer" className="max-w-3xl" />
               </div>
-              <Link href="/signup" className="btn-primary shrink-0 gap-2 self-start md:self-center">
-                Get started free
-                <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-              </Link>
-            </div>
+            ) : (
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="font-display text-2xl font-semibold text-navy md:text-3xl">
+                    Ready to run the next closing with guardrails?
+                  </h2>
+                  <p className="mt-2 max-w-xl text-secondary">
+                    Sign up, upload a contract, create a transaction, then open the agent and red-team console—without
+                    breaking the core deal workflow.
+                  </p>
+                </div>
+                <Link href="/signup" className="btn-primary shrink-0 gap-2 self-start md:self-center">
+                  Get started free
+                  <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+                </Link>
+              </div>
+            )}
           </div>
 
           <h2 className="mt-20 font-display text-2xl font-semibold text-navy">Questions teams ask before rolling this out</h2>
@@ -323,12 +381,20 @@ export default function HomePage() {
             layer.
           </p>
           <div className="flex flex-wrap gap-4 text-sm font-medium">
-            <Link href="/login" className="text-navy hover:text-navy-light">
-              Sign in
-            </Link>
-            <Link href="/signup" className="text-navy hover:text-navy-light">
-              Sign up
-            </Link>
+            {waitlist ? (
+              <a href="#waitlist" className="text-navy hover:text-navy-light">
+                Join waitlist
+              </a>
+            ) : (
+              <>
+                <Link href="/login" className="text-navy hover:text-navy-light">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="text-navy hover:text-navy-light">
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </footer>

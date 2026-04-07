@@ -354,7 +354,12 @@ LLAMA_CLOUD_API_KEY=llx-xxxxxxxxxxxxxxxxxx
 CRON_SECRET=random-hex-string
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_STORAGE_BUCKET=documents
+
+# Optional — public marketing / waitlist only (no dashboard, login, or other APIs)
+WAITLIST_ONLY=true
 ```
+
+When `WAITLIST_ONLY` is `true` or `1`, **middleware** only allows `/`, static assets, and `POST /api/waitlist`. Run **Migration 004** in `migrations.md` (`waitlist_signups` table) before collecting emails. Unset the variable (or set to `false`) when the full app should be reachable again.
 
 ---
 
@@ -376,7 +381,8 @@ npm run types:supabase  # Regenerate DB types after schema changes
 - PII masking via `MaskedField` component + `/api/security/pii-reveal` endpoint
 - Wire fraud banner on escrow sections
 - Idle timeout guard
-- Rate limiting on API routes
+- Rate limiting on API routes (including a dedicated **waitlist** bucket for `POST /api/waitlist`)
+- **Waitlist mode** — optional `WAITLIST_ONLY` env gates the entire product to landing + waitlist signup only
 - Contract lockdown prevents edits to closed/cancelled deals
 - **Agent policy gate** — all agent actions evaluated against manifest before execution
 - **Agent receipts** — every agent action logged to `agent_receipts` regardless of decision

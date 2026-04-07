@@ -219,6 +219,9 @@ LLAMA_CLOUD_API_KEY=llx-xxxxxxxxxxxxxxxxxx
 CRON_SECRET=random-hex-string
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_STORAGE_BUCKET=documents
+
+# Optional: landing + waitlist only (see migrations.md — waitlist_signups)
+# WAITLIST_ONLY=true
 ```
 
 ### Run

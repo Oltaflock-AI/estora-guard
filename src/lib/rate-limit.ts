@@ -26,6 +26,7 @@ export const RATE_LIMITS = {
   export: { maxRequests: 10, windowMs: 60 * 60 * 1000 } as RateLimitConfig,
   piiReveal: { maxRequests: 20, windowMs: 60 * 60 * 1000 } as RateLimitConfig,
   upload: { maxRequests: 20, windowMs: 60 * 1000 } as RateLimitConfig,
+  waitlist: { maxRequests: 8, windowMs: 60 * 60 * 1000 } as RateLimitConfig,
 };
 
 export interface RateLimitResult {

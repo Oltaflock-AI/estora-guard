@@ -127,6 +127,33 @@ GROUP BY transaction_id;
 
 ---
 
+## Migration 004 — waitlist_signups (public marketing / WAITLIST_ONLY mode)
+
+Run this when you want to collect emails from the landing page while the rest of the app is gated off.
+
+```sql
+-- Migration: 004_waitlist_signups
+-- Append-only interest list. API route uses service role to insert.
+-- No policies for anon/authenticated SELECT/INSERT — only service role writes.
+
+CREATE TABLE IF NOT EXISTS waitlist_signups (
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      text        NOT NULL,
+  name       text,
+  source     text        NOT NULL DEFAULT 'landing',
+  referrer   text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS waitlist_signups_email_lower_idx
+  ON waitlist_signups (lower(email));
+
+ALTER TABLE waitlist_signups ENABLE ROW LEVEL SECURITY;
+-- Intentionally no GRANT to anon/authenticated for this table in app code.
+```
+
+---
+
 ## After running migrations
 
 Regenerate TypeScript types:
@@ -135,7 +162,7 @@ Regenerate TypeScript types:
 npm run types:supabase
 ```
 
-This updates `src/lib/supabase/database.types.ts` with the new `agent_receipts` table type.
+This updates `src/lib/supabase/database.types.ts` with new tables (e.g. `agent_receipts`, `waitlist_signups`).
 
 ---
 
@@ -155,4 +182,7 @@ ALTER TABLE agent_receipts DISABLE ROW LEVEL SECURITY;
 
 -- Rollback migration 001
 DROP TABLE IF EXISTS agent_receipts;
+
+-- Rollback migration 004
+DROP TABLE IF EXISTS waitlist_signups;
 ```
