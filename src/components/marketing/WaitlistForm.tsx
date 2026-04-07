@@ -114,8 +114,7 @@ export default function WaitlistForm({
         </p>
       )}
       <p className="text-xs text-secondary">
-        No spam—just early access updates. We use your email only for Estora Guard waitlist
-        communication.
+        No spam—just early access updates. We use your email only for Estora waitlist communication.
       </p>
     </form>
   );

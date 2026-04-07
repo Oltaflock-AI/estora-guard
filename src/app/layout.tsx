@@ -25,9 +25,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Estora Guard — Real estate transaction intelligence & secure AI',
+  title: {
+    default: 'Estora — Real estate transaction intelligence',
+    template: '%s | Estora',
+  },
   description:
-    'Upload contracts, extract risks and milestones, run the deal from one workspace—and chat with Estora Guard: role-aware AI with policy gates, approvals, receipts, and a red-team console.',
+    'Contract intelligence, deal operations, timeline and health scoring, and Estora Guard — policy-governed AI with approvals, receipts, and audit trails for real estate teams.',
 };
 
 export default function RootLayout({

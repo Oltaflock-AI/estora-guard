@@ -154,6 +154,20 @@ ALTER TABLE waitlist_signups ENABLE ROW LEVEL SECURITY;
 
 ---
 
+## Migration 005 — waitlist `signup_metadata` (Estora landing form)
+
+Optional JSON payload for role, company, deal volume, and pain point. Safe to run after Migration 004.
+
+```sql
+-- Migration: 005_waitlist_signup_metadata
+ALTER TABLE waitlist_signups
+  ADD COLUMN IF NOT EXISTS signup_metadata jsonb DEFAULT '{}'::jsonb;
+```
+
+The `/api/waitlist` route stores only whitelisted keys (`role`, `company`, `active_deals`, `pain_point`) in this column.
+
+---
+
 ## After running migrations
 
 Regenerate TypeScript types:
@@ -185,4 +199,7 @@ DROP TABLE IF EXISTS agent_receipts;
 
 -- Rollback migration 004
 DROP TABLE IF EXISTS waitlist_signups;
+
+-- Rollback migration 005 (optional column)
+-- ALTER TABLE waitlist_signups DROP COLUMN IF EXISTS signup_metadata;
 ```

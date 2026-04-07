@@ -1,139 +1,110 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   ArrowRight,
   BarChart3,
-  Bot,
-  CheckCircle2,
   ChevronDown,
   FileText,
-  Layers,
   Lock,
   Shield,
-  Sparkles,
-  Terminal,
 } from 'lucide-react';
-import WaitlistForm from '@/components/marketing/WaitlistForm';
+import EstoraWaitlistForm from '@/components/marketing/EstoraWaitlistForm';
+import RevealSection from '@/components/marketing/RevealSection';
 import { isWaitlistOnly } from '@/lib/waitlist';
+
+export const metadata: Metadata = {
+  title: 'Estora — Real Estate Transaction Intelligence',
+  description:
+    'Estora reads your contracts, manages your deals, and protects your transactions. AI-powered intelligence for coordinators, attorneys, and brokerage ops teams. Join the waitlist.',
+  openGraph: {
+    title: 'Estora — Real Estate Transaction Intelligence',
+    description: 'From contract upload to close — with intelligence at every step. Join the waitlist.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Estora — Real Estate Transaction Intelligence',
+    description: 'From contract upload to close — with intelligence at every step.',
+  },
+};
 
 /** Read `WAITLIST_ONLY` at request time so deploy env can flip without a rebuild. */
 export const dynamic = 'force-dynamic';
 
-const trustPoints = [
-  'Append-only audit trail on every change',
-  'Row-level security in Supabase',
-  'PII masking with gated reveal workflow',
-];
+const skillsTable = [
+  { skill: 'Read deal summary', who: 'Everyone', approval: 'No' },
+  { skill: 'Read risk flags', who: 'Everyone', approval: 'No' },
+  { skill: 'Read timeline', who: 'Everyone', approval: 'No' },
+  { skill: 'Read task list', who: 'Everyone', approval: 'No' },
+  { skill: 'Draft next actions', who: 'Everyone', approval: 'No' },
+  {
+    skill: 'Access sensitive contact details',
+    who: 'Attorneys and coordinators only',
+    approval: 'Yes — always',
+    highlight: true,
+  },
+] as const;
 
-const coreBenefits = [
-  {
-    icon: FileText,
-    title: 'Contract → structured deal data',
-    body: 'Upload a PDF. LlamaParse plus Claude extract parties, dates, money, and clauses—so you stop retyping the purchase agreement.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Timeline, tasks, and health in one place',
-    body: 'Milestones, checklist items, and a live health score give your team a single nerve center instead of scattered spreadsheets.',
-  },
-  {
-    icon: Shield,
-    title: 'Risk flags you can acknowledge',
-    body: 'Inspection windows, missing language, and ambiguous terms surface as severities you can track—not surprises at the wire.',
-  },
-];
+const hardDenies = [
+  'Prompt injection attempts (“ignore previous instructions,” “DAN,” etc.)',
+  'Any attempt to modify escrow or wire transfer instructions',
+  'Cross-organization data access',
+  'Manual health score overrides',
+  'Document instruction overrides',
+] as const;
 
-const guardBenefits = [
-  {
-    icon: Bot,
-    title: 'Role-aware answers',
-    body: 'Buyer’s agent, seller’s agent, attorney, coordinator—same deal, role-appropriate summaries and next steps.',
-  },
-  {
-    icon: Lock,
-    title: 'Policy gate on every skill',
-    body: 'Six bounded skills, manifest-driven rules, and hard denies for jailbreaks, escrow tampering, and cross-org dumps.',
-  },
-  {
-    icon: Terminal,
-    title: 'Red-team console',
-    body: 'Run eight preset attacks and watch allow, deny, and approval-required outcomes in real time—proof the firewall works.',
-  },
-];
-
-const steps = [
-  { step: '1', title: 'Upload the contract', detail: 'PDF to structured extraction with confidence and page references.' },
-  { step: '2', title: 'Create the transaction', detail: 'Property, people, mortgage, escrow, and timeline materialize automatically.' },
-  { step: '3', title: 'Operate the file', detail: 'Tasks, timeline, agreements, and audit trail stay in sync as the deal moves.' },
-  { step: '4', title: 'Ask Estora Guard', detail: 'Chat with the agent; every invocation is policy-checked and receipt-logged.' },
-];
-
-const faqItemsBase = [
+const faqItems = [
   {
     q: 'What is Estora versus Estora Guard?',
-    a: 'Estora is the transaction intelligence platform—extraction, risks, timeline, health, and audit. Guard is the AI layer: a chat agent plus a policy engine, approvals for sensitive actions, receipts, and a red-team console.',
+    a: 'Estora is the transaction platform—contract intelligence, deal management, timeline, health, and audit. Estora Guard is the policy-governed AI layer on top: a constrained agent, approval gates for sensitive data, receipts on every action, and hard blocks on dangerous requests.',
   },
   {
-    q: 'Is the agent allowed to change wire instructions or escrow?',
-    a: 'No. Escrow and wire modifications are hard-denied at the policy layer, regardless of how the prompt is phrased. That denial is logged like every other agent action.',
+    q: 'Will the agent change wire or escrow instructions?',
+    a: 'No. That class of change is hard-denied at the policy layer with no approval path. The attempt is logged like every other agent action.',
   },
   {
-    q: 'What happens to my data?',
-    a: 'Data lives in your Supabase project with row-level security. Agent skills read through the same services as the product UI; there is no separate shadow database for the demo path.',
+    q: 'Who gets access first?',
+    a: 'We are prioritizing transaction coordinators, real estate attorneys, and brokerage operations leads—the roles running the highest deal volume and operational risk.',
   },
   {
-    q: 'What is coming next?',
-    a: 'The architecture supports a separate agent security runtime (e.g. NemoClaw / OpenShell) for process-level isolation alongside the in-app policy gate—documented in-repo for teams that want defense in depth.',
+    q: 'What happens to my waitlist email?',
+    a: 'We use it only for Estora early access and product updates. No list sales, no unrelated marketing.',
   },
-];
-
-const faqWaitlistItem = {
-  q: 'Why a waitlist?',
-  a: 'We are finishing the production backend and onboarding flow. Joining the list reserves your spot for early access and product updates—no obligation.',
-};
+  {
+    q: 'What integrations ship on day one?',
+    a: 'The waitlist opens the core transaction and intelligence layer. Roadmap items like MLS and full workflow orchestration are layered in with design partners—see the vision section below.',
+  },
+] as const;
 
 export default function HomePage() {
   const waitlist = isWaitlistOnly();
-  const faqItems = waitlist ? [...faqItemsBase, faqWaitlistItem] : faqItemsBase;
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="sticky top-0 z-50 border-b border-border bg-surface-raised/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="font-display text-xl font-semibold text-navy">
+    <div className="landing-estora min-h-screen font-sans antialiased">
+      <header className="sticky top-0 z-50 border-b border-[var(--lp-border)] bg-[var(--lp-bg)]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1140px] items-center justify-between gap-4 px-6 py-4">
+          <Link href="/" className="font-display text-xl font-semibold tracking-tight text-[var(--lp-text)]">
             Estora
-            <span className="ml-2 text-sm font-sans font-medium text-gold">Guard</span>
           </Link>
-          <nav className="hidden items-center gap-8 text-sm font-medium text-secondary md:flex" aria-label="Page sections">
-            {waitlist && (
-              <a href="#waitlist" className="hover:text-primary transition-colors">
-                Waitlist
-              </a>
-            )}
-            <a href="#problem" className="hover:text-primary transition-colors">
-              Why Estora
-            </a>
-            <a href="#platform" className="hover:text-primary transition-colors">
-              Platform
-            </a>
-            <a href="#guard" className="hover:text-primary transition-colors">
-              Guard
-            </a>
-            <a href="#faq" className="hover:text-primary transition-colors">
-              FAQ
-            </a>
-          </nav>
           <div className="flex shrink-0 items-center gap-3">
             {waitlist ? (
-              <a href="#waitlist" className="btn-gold !h-9 !px-4 text-xs md:text-sm">
-                Join waitlist
+              <a
+                href="#waitlist"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--lp-accent)] transition-colors hover:text-[var(--lp-text)]"
+              >
+                Join the waitlist
+                <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
               </a>
             ) : (
               <>
-                <Link href="/login" className="btn-secondary !h-9 !px-4 text-xs md:text-sm">
+                <Link
+                  href="/login"
+                  className="rounded-md border border-[var(--lp-border)] px-4 py-2 text-sm font-medium text-[var(--lp-text-secondary)] transition-colors hover:border-[var(--lp-accent-dim)] hover:text-[var(--lp-text)]"
+                >
                   Sign in
                 </Link>
-                <Link href="/signup" className="btn-gold !h-9 !px-4 text-xs md:text-sm">
+                <Link href="/signup" className="lp-cta inline-flex items-center gap-2 px-5 py-2 text-sm font-medium">
                   Get started
+                  <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
                 </Link>
               </>
             )}
@@ -143,258 +114,420 @@ export default function HomePage() {
 
       <main>
         {/* Hero */}
-        <section className="relative overflow-hidden border-b border-border">
+        <section className="relative overflow-hidden border-b border-[var(--lp-border)]">
           <div
-            className="pointer-events-none absolute -right-24 top-0 h-96 w-96 rounded-full bg-gold-light/40 blur-3xl"
+            className="pointer-events-none absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage: `linear-gradient(var(--lp-border) 1px, transparent 1px), linear-gradient(90deg, var(--lp-border) 1px, transparent 1px)`,
+              backgroundSize: '48px 48px',
+            }}
             aria-hidden
           />
-          <div className="mx-auto grid max-w-6xl gap-12 px-6 py-16 md:grid-cols-2 md:py-24 lg:gap-16">
-            <div className="flex flex-col justify-center">
-              <p className="section-header mb-3 text-gold">Real estate closings, without the chaos</p>
-              <h1 className="font-display text-4xl font-semibold leading-tight text-navy md:text-5xl lg:text-[2.75rem]">
-                Close faster with contract intelligence and an AI agent you can actually trust
+          <div className="relative mx-auto grid max-w-[1140px] gap-14 px-6 py-20 md:min-h-[92vh] md:grid-cols-2 md:items-center md:py-0 md:pb-24 md:pt-28">
+            <div>
+              <p className="lp-label lp-hero-line mb-4 text-[var(--lp-text-muted)]">Transaction intelligence</p>
+              <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-bold leading-[1.08] tracking-[-0.03em] text-[var(--lp-text)]">
+                <span className="lp-hero-line block">Your contracts are smarter than your tools.</span>
+                <span className="lp-hero-line lp-hero-line-2 mt-1 block text-[var(--lp-accent)]">
+                  Estora changes that.
+                </span>
               </h1>
-              <p className="mt-5 text-lg text-secondary leading-relaxed">
-                {waitlist
-                  ? 'We are opening early access soon. Join the waitlist for launch updates and a first look at Estora Guard—contract intelligence plus a policy-governed agent layer.'
-                  : 'Turn purchase agreements into living transactions—then ask Estora Guard questions with a manifest-driven firewall, human approval for sensitive actions, and a receipt for every attempt.'}
+              <p className="lp-hero-sub mt-6 max-w-xl text-lg leading-relaxed text-[var(--lp-text-secondary)]">
+                AI-powered transaction intelligence for real estate teams — from contract upload to close.
               </p>
-              {waitlist ? (
-                <div id="waitlist" className="mt-8 scroll-mt-28">
-                  <WaitlistForm source="landing-hero" />
-                </div>
-              ) : (
-                <div className="mt-8 flex flex-wrap items-center gap-4">
-                  <Link href="/signup" className="btn-gold gap-2">
-                    Create your account
-                    <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  </Link>
-                  <a href="#platform" className="btn-secondary">
-                    See how it works
-                  </a>
-                </div>
+              <div className="lp-hero-cta mt-10">
+                {waitlist ? (
+                  <div id="hero-waitlist" className="max-w-md scroll-mt-28">
+                    <EstoraWaitlistForm mode="hero" source="landing-hero" />
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Link href="/signup" className="lp-cta inline-flex items-center gap-2 px-8 py-3 text-sm font-medium">
+                      Create your account
+                      <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+                    </Link>
+                    <a
+                      href="#platform"
+                      className="text-sm font-medium text-[var(--lp-text-secondary)] underline-offset-4 hover:text-[var(--lp-text)] hover:underline"
+                    >
+                      See how it works
+                    </a>
+                  </div>
+                )}
+              </div>
+              {waitlist && (
+                <p className="lp-hero-cta mt-4 max-w-md text-sm text-[var(--lp-text-muted)]">
+                  We&apos;re opening access to transaction coordinators, attorneys, and brokerage ops teams first.
+                </p>
               )}
-              <ul className="mt-10 flex flex-col gap-2 text-sm text-secondary sm:flex-row sm:flex-wrap sm:gap-x-6">
-                {trustPoints.map((t) => (
-                  <li key={t} className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-success" strokeWidth={2} aria-hidden />
-                    <span>{t}</span>
+            </div>
+
+            <div className="relative flex min-h-[280px] items-center justify-center md:min-h-[360px]" aria-hidden>
+              <div className="relative w-full max-w-[400px]">
+                <div
+                  className="absolute -inset-4 rounded-2xl opacity-40 blur-2xl"
+                  style={{ background: 'radial-gradient(ellipse at center, rgba(184,149,106,0.25), transparent 70%)' }}
+                />
+                <div className="relative rounded-xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-5 shadow-2xl">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--lp-text-muted)]">
+                      Deal health
+                    </span>
+                    <span className="rounded-full border border-[var(--lp-accent)]/35 bg-[var(--lp-accent)]/10 px-2.5 py-0.5 font-mono text-xs text-[var(--lp-accent)]">
+                      74 / 100
+                    </span>
+                  </div>
+                  <div className="space-y-2 blur-[2.5px]">
+                    <div className="h-2 w-full rounded bg-[var(--lp-surface-hi)]" />
+                    <div className="h-2 w-[88%] rounded bg-[var(--lp-surface-hi)]" />
+                    <div className="h-2 w-[72%] rounded bg-[var(--lp-surface-hi)]" />
+                  </div>
+                  <div className="relative -mt-14 rounded-lg border border-[var(--lp-guard)]/35 bg-[var(--lp-bg)]/95 p-3 backdrop-blur-sm">
+                    <p className="font-mono text-[11px] uppercase tracking-wider text-[var(--lp-guard)]">Risk flag</p>
+                    <p className="mt-1 font-display text-sm font-semibold text-[var(--lp-text)]">
+                      HIGH — Missing contingency removal date
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Statement */}
+        <RevealSection className="border-b border-[var(--lp-border)] px-6 py-24 md:py-32">
+          <div className="mx-auto max-w-[760px] text-center">
+            <p className="text-[1.25rem] font-normal leading-relaxed text-[var(--lp-text-secondary)] md:text-[1.35rem] md:leading-[1.7]">
+              Real estate transactions are still managed with PDFs, email threads, sticky notes, and memory. A coordinator
+              handling 20 active deals lives inside a spreadsheet that doesn&apos;t talk to her calendar, a CRM that
+              doesn&apos;t know her deadlines, and an inbox where the contract lives as an attachment no one has fully
+              read.
+            </p>
+            <p className="mt-8 text-[1.25rem] leading-relaxed text-[var(--lp-text-secondary)] md:text-[1.35rem] md:leading-[1.7]">
+              One missed contingency date. One overlooked clause. One unacknowledged risk flag.
+            </p>
+            <p className="mt-8 text-[1.25rem] font-medium leading-relaxed text-[var(--lp-text)] md:text-[1.35rem] md:leading-[1.7]">
+              That&apos;s not a workflow problem. That&apos;s an infrastructure problem. And it&apos;s been accepted as
+              normal for decades.
+            </p>
+            <p className="mt-10 font-display text-2xl font-semibold text-[var(--lp-accent)] md:text-3xl">
+              Estora is the infrastructure.
+            </p>
+          </div>
+        </RevealSection>
+
+        {/* Platform */}
+        <RevealSection id="platform" className="border-b border-[var(--lp-border)] px-6 py-24 md:py-32">
+          <div className="mx-auto max-w-[1140px]">
+            <p className="lp-label text-[var(--lp-text-muted)]">The platform</p>
+            <h2 className="mt-3 max-w-3xl font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-text)] md:text-[2.65rem] md:leading-tight">
+              From the moment a contract lands, your deal is understood.
+            </h2>
+            <div className="mt-16 grid gap-px bg-[var(--lp-border)] md:grid-cols-3">
+              <article className="bg-[var(--lp-bg)] p-8 md:p-10">
+                <FileText className="h-9 w-9 text-[var(--lp-accent)]" strokeWidth={1.25} aria-hidden />
+                <p className="lp-label mt-8 text-[var(--lp-accent-dim)]">Contract intelligence</p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-[var(--lp-text)] md:text-2xl">
+                  Upload a purchase agreement. Estora reads it.
+                </h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  Every party. Every date. Every contingency. Every obligation. Extracted, structured, and linked back to
+                  the exact page it came from — with confidence scores and risk flags raised automatically.
+                </p>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  No manual data entry. No rekeying into a CRM. No hoping someone read the whole thing. The deal is
+                  structured the moment the document arrives.
+                </p>
+                <p className="mt-6 font-mono text-xs leading-relaxed text-[var(--lp-text-muted)]">
+                  Document classification, entity extraction, clause logic, risk rationale — page-level provenance on every
+                  field.
+                </p>
+              </article>
+              <article className="bg-[var(--lp-bg)] p-8 md:p-10">
+                <BarChart3 className="h-9 w-9 text-[var(--lp-accent)]" strokeWidth={1.25} aria-hidden />
+                <p className="lp-label mt-8 text-[var(--lp-accent-dim)]">Transaction control</p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-[var(--lp-text)] md:text-2xl">
+                  Every deal gets a spine.
+                </h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  A live milestone timeline. A health score. A task checklist that generates itself from contract logic.
+                  Deadlines that escalate automatically — from upcoming to due soon to overdue to critical — without
+                  anyone running a morning standup to find out.
+                </p>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  Your team sees what&apos;s done, what&apos;s late, and what&apos;s about to become a problem. Before it
+                  becomes a problem.
+                </p>
+                <p className="mt-6 font-mono text-xs leading-relaxed text-[var(--lp-text-muted)]">
+                  Rules engine → tasks. Deadline engine → escalations. Events your team can act on.
+                </p>
+              </article>
+              <article className="bg-[var(--lp-bg)] p-8 md:p-10">
+                <Shield className="h-9 w-9 text-[var(--lp-accent)]" strokeWidth={1.25} aria-hidden />
+                <p className="lp-label mt-8 text-[var(--lp-accent-dim)]">Estora Guard</p>
+                <h3 className="mt-2 font-display text-xl font-semibold text-[var(--lp-text)] md:text-2xl">
+                  The security layer real estate was never given.
+                </h3>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  Real estate transactions move real money. Wire fraud is the fastest-growing financial crime in property
+                  deals. Most platforms were not built with that threat in mind.
+                </p>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  Estora Guard is the security and intelligence layer built directly into the platform. A role-aware AI
+                  agent that can reason about your deal — but only within a strict policy boundary. Human approval gates
+                  on every sensitive operation. PII masked by default. An append-only audit trail on every action,
+                  every decision, every reason.
+                </p>
+                <p className="mt-6 font-mono text-xs leading-relaxed text-[var(--lp-text-muted)]">
+                  Injection, escrow tampering, cross-org access — blocked before execution. Every action receipts request,
+                  decision, and reason.
+                </p>
+              </article>
+            </div>
+          </div>
+        </RevealSection>
+
+        {/* Guard detail */}
+        <RevealSection
+          id="guard"
+          className="border-b border-[var(--lp-border)] bg-[var(--lp-surface)] px-6 py-24 md:py-32"
+        >
+          <div className="mx-auto max-w-[1140px]">
+            <div className="border-l-2 border-[var(--lp-guard)] pl-6 md:pl-8">
+              <p className="lp-label text-[var(--lp-guard)]">Estora Guard</p>
+              <h2 className="mt-3 max-w-4xl font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-text)] md:text-[2.5rem] md:leading-tight">
+                Six things the agent can do. One that requires your approval. Everything else is hard-blocked.
+              </h2>
+              <p className="mt-6 max-w-3xl text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                The Estora agent has a defined set of skills. Not a general-purpose AI that can do anything it&apos;s
+                asked — a constrained intelligence with a manifest that governs exactly what it can access, who can ask
+                it, and what requires a human in the loop before anything happens.
+              </p>
+            </div>
+
+            <div className="mt-12 overflow-x-auto rounded-lg border border-[var(--lp-border)]">
+              <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--lp-border)] bg-[var(--lp-surface-hi)] font-mono text-[11px] uppercase tracking-wider text-[var(--lp-text-muted)]">
+                    <th className="px-4 py-3 font-medium">Skill</th>
+                    <th className="px-4 py-3 font-medium">Who can use it</th>
+                    <th className="px-4 py-3 font-medium">Requires approval?</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[var(--lp-text-secondary)]">
+                  {skillsTable.map((row) => (
+                    <tr
+                      key={row.skill}
+                      className={`border-b border-[var(--lp-border)] last:border-b-0 ${
+                        'highlight' in row && row.highlight ? 'bg-[var(--lp-guard)]/10' : ''
+                      }`}
+                    >
+                      <td
+                        className={`px-4 py-3 font-medium ${'highlight' in row && row.highlight ? 'text-[var(--lp-text)]' : 'text-[var(--lp-text)]'}`}
+                      >
+                        {row.skill}
+                      </td>
+                      <td className="px-4 py-3">{row.who}</td>
+                      <td
+                        className={`px-4 py-3 font-mono text-xs ${'highlight' in row && row.highlight ? 'font-semibold text-[var(--lp-guard)]' : ''}`}
+                      >
+                        {row.approval}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-10 max-w-3xl text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+              Sensitive data — buyer SSN, wire instructions, attorney contact details — is masked in the interface by
+              default. Revealing it requires explicit approval. The request is logged. The decision is logged. The
+              reason is logged.
+            </p>
+            <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+              Not because we expect everyone to misuse it. Because the platform is designed to work correctly even when
+              someone tries to.
+            </p>
+
+            <div className="mt-14 rounded-lg border border-[var(--lp-guard-dim)]/50 bg-[var(--lp-bg)] p-6 md:p-8">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--lp-guard)]">
+                Always blocked · No approval path
+              </p>
+              <ul className="guard-deny-stagger mt-6 space-y-3 font-mono text-sm text-[var(--lp-text-secondary)]">
+                {hardDenies.map((line) => (
+                  <li key={line} className="flex gap-2">
+                    <span className="shrink-0 text-[var(--lp-guard)]">—</span>
+                    <span>{line}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-
-            <div className="relative flex items-center justify-center" aria-hidden>
-              <div className="relative w-full max-w-md">
-                <div className="card relative z-10 rotate-1 shadow-modal border-gold/20 p-5">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium uppercase tracking-wider text-secondary">Agent</span>
-                    <span className="badge-success">Policy: allowed</span>
-                  </div>
-                  <p className="text-sm text-primary leading-relaxed">
-                    “Summarize this deal for the buyer’s agent and list the top three risks before closing.”
-                  </p>
-                  <div className="mt-4 rounded-md bg-surface-sunken p-3 font-mono text-xs text-secondary">
-                    skill: read_deal_summary → receipt logged
-                  </div>
-                </div>
-                <div className="card absolute -bottom-6 -left-4 z-0 w-[88%] -rotate-2 border-border opacity-90 p-4 shadow-card">
-                  <div className="flex items-center gap-2 text-xs text-secondary">
-                    <Layers className="h-4 w-4 text-gold" strokeWidth={1.5} />
-                    Transaction timeline · Health 82 · 6 open tasks
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Problem / Agitation / Solution */}
-        <section id="problem" className="border-b border-border bg-surface-raised">
-          <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-            <div className="mx-auto max-w-3xl text-center">
-              <h2 className="font-display text-3xl font-semibold text-navy md:text-4xl">
-                The file moves fast. Your tools do not.
-              </h2>
-              <p className="mt-4 text-lg text-secondary leading-relaxed">
-                Critical dates live in PDFs. Risks hide in boilerplate. Teams forward threads asking for “the latest”
-                wire sheet. One rushed answer at the wrong moment becomes liability—or fraud.
-              </p>
-              <p className="mt-6 text-lg text-primary leading-relaxed">
-                <strong className="font-semibold text-navy">Estora</strong> gives you structured deal data and an always-on
-                timeline. <strong className="font-semibold text-navy">Estora Guard</strong> adds an agent that can reason
-                about the file—inside a policy layer designed for real-world abuse.
+              <p className="mt-8 font-mono text-xs text-[var(--lp-text-muted)]">
+                [audit] POLICY_DECISION: DENIED | reason: prompt_injection_pattern_detected
               </p>
             </div>
-          </div>
-        </section>
 
-        {/* Platform benefits */}
-        <section id="platform" className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-            <div className="mb-12 max-w-2xl">
-              <p className="section-header mb-2">The Estora platform</p>
-              <h2 className="font-display text-3xl font-semibold text-navy md:text-4xl">
-                From static PDF to a deal you can run
-              </h2>
-              <p className="mt-3 text-secondary leading-relaxed">
-                Features tell you what we built. Benefits tell you what you get: fewer missed deadlines, clearer
-                handoffs, and a defensible record when questions come later.
-              </p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
-              {coreBenefits.map(({ icon: Icon, title, body }) => (
-                <article key={title} className="card flex flex-col gap-3 border-border transition-shadow hover:shadow-card">
-                  <Icon className="h-8 w-8 text-gold" strokeWidth={1.5} aria-hidden />
-                  <h3 className="font-display text-xl text-navy">{title}</h3>
-                  <p className="text-sm text-secondary leading-relaxed">{body}</p>
-                </article>
-              ))}
-            </div>
+            <p className="mt-10 text-[15px] text-[var(--lp-text-secondary)]">
+              We stress-tested this. We built an attack console with eight preset adversarial attacks. Every one of them
+              is blocked.
+            </p>
           </div>
-        </section>
+        </RevealSection>
 
-        {/* Guard */}
-        <section id="guard" className="border-b border-border bg-navy text-white">
-          <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-            <div className="mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-xs font-medium uppercase tracking-wider text-gold-light">Estora Guard</p>
-                <h2 className="mt-2 font-display text-3xl font-semibold text-white md:text-4xl">
-                  Useful AI—with enforceable boundaries
-                </h2>
-                <p className="mt-3 text-surface-sunken leading-relaxed">
-                  Every skill is declared in a manifest. Policy evaluates role, sensitivity, and attack patterns before
-                  execution. Sensitive flows can require explicit approval; hard denies never bypass the human chain of
-                  command.
-                </p>
-              </div>
-              {waitlist ? (
-                <a
-                  href="#waitlist"
-                  className="inline-flex h-field-height shrink-0 items-center justify-center gap-2 rounded-md bg-gold px-6 text-sm font-medium text-white hover:brightness-110 focus:outline-none focus:shadow-focus-gold transition-all"
-                >
-                  <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  Join the waitlist
-                </a>
-              ) : (
-                <Link
-                  href="/signup"
-                  className="inline-flex h-field-height shrink-0 items-center justify-center gap-2 rounded-md bg-gold px-6 text-sm font-medium text-white hover:brightness-110 focus:outline-none focus:shadow-focus-gold transition-all"
-                >
-                  <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  Try the full flow
-                </Link>
-              )}
-            </div>
-            <div className="grid gap-6 md:grid-cols-3">
-              {guardBenefits.map(({ icon: Icon, title, body }) => (
+        {/* Who it's for */}
+        <RevealSection className="border-b border-[var(--lp-border)] px-6 py-24 md:py-32">
+          <div className="mx-auto max-w-[1140px]">
+            <p className="lp-label text-[var(--lp-text-muted)]">Built for</p>
+            <h2 className="mt-3 font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-text)] md:text-[2.65rem]">
+              The people who manage the actual work.
+            </h2>
+            <div className="mt-14 grid gap-6 md:grid-cols-3">
+              {[
+                {
+                  title: 'Transaction coordinators',
+                  body: "You're managing 15–30 active deals at once. Estora is your command center. Every contract read the moment it lands. Every deadline tracked. Every task generated from clause logic — not from someone's memory of what needs to happen. Your pipeline in one place, with a health score on every deal.",
+                },
+                {
+                  title: 'Real estate attorneys',
+                  body: 'Contracts arrive already read. Risk flags are already surfaced, linked back to the exact clause that raised them. PII access is gated behind explicit approval and fully logged. You see what matters. You act on what matters. The audit trail covers you.',
+                },
+                {
+                  title: 'Brokerage operations teams',
+                  body: "Visibility across every active deal without chasing agents for updates. Health scores across the portfolio. Escalations that reach you before they become liability. Role-based access so every team member sees exactly what they're supposed to — nothing more.",
+                },
+              ].map((card) => (
                 <article
-                  key={title}
-                  className="rounded-lg border border-white/15 bg-white/5 p-6 backdrop-blur-sm"
+                  key={card.title}
+                  className="rounded-xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 transition-colors hover:border-[var(--lp-accent)]/25"
                 >
-                  <Icon className="h-8 w-8 text-gold-light" strokeWidth={1.5} aria-hidden />
-                  <h3 className="mt-3 font-display text-xl text-white">{title}</h3>
-                  <p className="mt-2 text-sm text-white/80 leading-relaxed">{body}</p>
+                  <h3 className="font-display text-xl font-semibold text-[var(--lp-text)]">{card.title}</h3>
+                  <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">{card.body}</p>
                 </article>
               ))}
             </div>
           </div>
-        </section>
+        </RevealSection>
 
-        {/* How it works */}
-        <section className="border-b border-border bg-surface-raised">
-          <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-            <h2 className="font-display text-3xl font-semibold text-navy md:text-4xl">How your team moves through Estora</h2>
-            <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {steps.map(({ step, title, detail }) => (
-                <li key={step} className="relative card border-border">
-                  <span className="font-mono text-xs text-gold">{step}</span>
-                  <h3 className="mt-2 font-display text-lg text-navy">{title}</h3>
-                  <p className="mt-2 text-sm text-secondary leading-relaxed">{detail}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* Final CTA + FAQ */}
-        <section id="faq" className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-          <div className="card border-gold/25 bg-gradient-to-br from-surface-raised to-gold-light/20 p-8 md:p-10">
-            {waitlist ? (
-              <div className="flex flex-col gap-6">
-                <div>
-                  <h2 className="font-display text-2xl font-semibold text-navy md:text-3xl">
-                    Get notified when we open access
-                  </h2>
-                  <p className="mt-2 max-w-xl text-secondary">
-                    Leave your email and we will reach out when the product is ready for your team—screenshots and a
-                    short demo will land in your inbox first.
-                  </p>
-                </div>
-                <WaitlistForm source="landing-footer" className="max-w-3xl" />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="font-display text-2xl font-semibold text-navy md:text-3xl">
-                    Ready to run the next closing with guardrails?
-                  </h2>
-                  <p className="mt-2 max-w-xl text-secondary">
-                    Sign up, upload a contract, create a transaction, then open the agent and red-team console—without
-                    breaking the core deal workflow.
-                  </p>
-                </div>
-                <Link href="/signup" className="btn-primary shrink-0 gap-2 self-start md:self-center">
-                  Get started free
-                  <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-                </Link>
-              </div>
+        {/* Vision */}
+        <RevealSection className="border-b border-[var(--lp-border)] px-6 py-24 md:py-32">
+          <div className="mx-auto max-w-[760px] text-center">
+            <h2 className="font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-text)] md:text-[2.5rem]">
+              This is just the start.
+            </h2>
+            <p className="mt-8 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+              What we&apos;ve built and are opening waitlist access for is the transaction and intelligence layer —
+              contract reading, deal management, and the security runtime on top.
+            </p>
+            <p className="mt-6 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+              What comes next: automated client communications tied to deal state. Listing and marketing automation. MLS
+              integration. A full workflow orchestration layer that connects every part of real estate operations into one
+              coherent system.
+            </p>
+            <p className="mt-6 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+              We&apos;re building this the right way — layer by layer, with the teams who will actually use it.
+            </p>
+            <p className="mt-10 font-display text-lg text-[var(--lp-accent)]">
+              If you&apos;re on the waitlist, you&apos;re part of that build.
+            </p>
+            {waitlist && (
+              <a
+                href="#waitlist"
+                className="mt-10 inline-flex items-center gap-2 text-sm font-medium text-[var(--lp-accent)] hover:text-[var(--lp-text)]"
+              >
+                Join the waitlist
+                <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+              </a>
             )}
           </div>
+        </RevealSection>
 
-          <h2 className="mt-20 font-display text-2xl font-semibold text-navy">Questions teams ask before rolling this out</h2>
-          <div className="mt-8 divide-y divide-border rounded-lg border border-border bg-surface-raised">
-            {faqItems.map(({ q, a }) => (
-              <details key={q} className="group px-5 py-4 first:rounded-t-lg last:rounded-b-lg">
-                <summary className="cursor-pointer list-none font-medium text-primary outline-none marker:content-none [&::-webkit-details-marker]:hidden">
-                  <span className="flex items-center justify-between gap-4">
-                    {q}
-                    <ChevronDown
-                      className="h-5 w-5 shrink-0 text-gold transition-transform group-open:rotate-180"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-secondary leading-relaxed">{a}</p>
-              </details>
-            ))}
+        {/* Waitlist / CTA */}
+        <section id="waitlist" className="scroll-mt-28 px-6 py-24 md:py-32">
+          <div className="mx-auto max-w-[640px]">
+            {waitlist ? (
+              <>
+                <h2 className="font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-text)] md:text-[2.25rem]">
+                  Get access before we open to everyone.
+                </h2>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  We&apos;re onboarding transaction teams, real estate attorneys, and brokerage ops leads first. Early
+                  access members shape the product, influence the roadmap, and get priority access to every layer we ship.
+                </p>
+                <div className="mt-10 rounded-xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-6 md:p-8">
+                  <EstoraWaitlistForm mode="full" source="landing-waitlist" />
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-text)] md:text-[2.25rem]">
+                  Run your next closing in Estora
+                </h2>
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-text-secondary)]">
+                  Upload a contract, create a transaction, and explore the timeline, tasks, and Estora Guard agent — with
+                  policy gates and a full audit trail.
+                </p>
+                <div className="mt-10 flex flex-wrap gap-4">
+                  <Link href="/signup" className="lp-cta inline-flex items-center gap-2 px-8 py-3 text-sm font-medium">
+                    Create your account
+                    <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center gap-2 rounded-md border border-[var(--lp-border)] px-8 py-3 text-sm font-medium text-[var(--lp-text-secondary)] hover:border-[var(--lp-accent-dim)] hover:text-[var(--lp-text)]"
+                  >
+                    Sign in
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="border-t border-[var(--lp-border)] px-6 py-20 md:py-24">
+          <div className="mx-auto max-w-[720px]">
+            <div className="mb-2 flex items-center gap-2">
+              <Lock className="h-5 w-5 text-[var(--lp-accent)]" strokeWidth={1.5} aria-hidden />
+              <h2 className="font-display text-2xl font-semibold text-[var(--lp-text)]">Questions we hear a lot</h2>
+            </div>
+            <div className="mt-8 divide-y divide-[var(--lp-border)] rounded-xl border border-[var(--lp-border)] bg-[var(--lp-surface)]">
+              {faqItems.map(({ q, a }) => (
+                <details key={q} className="group px-5 py-4 first:rounded-t-xl last:rounded-b-xl">
+                  <summary className="cursor-pointer list-none font-medium text-[var(--lp-text)] outline-none marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center justify-between gap-4">
+                      {q}
+                      <ChevronDown
+                        className="h-5 w-5 shrink-0 text-[var(--lp-accent)] transition-transform group-open:rotate-180"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--lp-text-secondary)]">{a}</p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border bg-surface-sunken">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-secondary">
-            © {new Date().getFullYear()} Estora Guard. Real estate transaction intelligence with a policy-governed agent
-            layer.
-          </p>
-          <div className="flex flex-wrap gap-4 text-sm font-medium">
-            {waitlist ? (
-              <a href="#waitlist" className="text-navy hover:text-navy-light">
-                Join waitlist
-              </a>
-            ) : (
-              <>
-                <Link href="/login" className="text-navy hover:text-navy-light">
-                  Sign in
-                </Link>
-                <Link href="/signup" className="text-navy hover:text-navy-light">
-                  Sign up
-                </Link>
-              </>
-            )}
+      <footer className="border-t border-[var(--lp-border)] px-6 py-14">
+        <div className="mx-auto flex max-w-[1140px] flex-col gap-8 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="font-display text-lg font-semibold text-[var(--lp-text)]">Estora</p>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-[var(--lp-text-secondary)]">
+              Estate + Aura. A guiding intelligence layer for real estate assets.
+            </p>
+          </div>
+          <div className="text-sm">
+            <a
+              href="mailto:hello@estora.ai"
+              className="text-[var(--lp-accent)] transition-colors hover:text-[var(--lp-text)]"
+            >
+              hello@estora.ai
+            </a>
+            <p className="mt-6 text-[var(--lp-text-muted)]">
+              © {new Date().getFullYear()} Estora. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
