@@ -79,7 +79,7 @@ Line 2: `Estora changes that.`
 **Micro-copy under hero CTA:**  
 `We’re opening access to transaction coordinators, attorneys, and brokerage ops teams first.`
 
-**Hero visual (non-screenshot):** Fragment UI—e.g. blurred timeline with sharp `HEALTH: 74 / 100` or a risk flag card `HIGH — Missing contingency removal date` on dark glass surface.
+**Hero visual (non-screenshot):** Two stacked product fragments that rotate on a timer (deal health + timeline + high risk, and a second risk card)—CSS `transform` only for the stack, no pager dots, no extra “timeline summary” card behind the stack. Pauses when the tab is hidden.
 
 ---
 
@@ -317,8 +317,9 @@ No social until active. Minimal legal; expand when you incorporate.
 | Asset | Role |
 |-------|------|
 | `src/app/page.tsx` | Landing UI |
-| `src/components/marketing/EstoraWaitlistForm.tsx` | Full waitlist form + dark styling |
+| `src/components/marketing/EstoraWaitlistForm.tsx` | Full waitlist form (light theme) |
+| `src/components/marketing/LandingHeroCardStack.tsx` | Hero: two-card rotating stack |
 | `src/components/marketing/RevealSection.tsx` | Scroll reveal wrapper |
-| `src/app/globals.css` | `.landing-estora` variables + animations |
+| `src/app/globals.css` | `.landing-estora-light` hero + section animations |
 | `src/app/api/waitlist/route.ts` | Persists `signup_metadata` jsonb |
 | `migrations.md` | Migration 005 SQL |
