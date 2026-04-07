@@ -25,8 +25,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Estora AI',
-  description: 'Real estate transaction intelligence platform',
+  title: 'Estora Guard — Real estate transaction intelligence & secure AI',
+  description:
+    'Upload contracts, extract risks and milestones, run the deal from one workspace—and chat with Estora Guard: role-aware AI with policy gates, approvals, receipts, and a red-team console.',
 };
 
 export default function RootLayout({
@@ -37,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${playfairDisplay.variable} ${jetbrainsMono.variable}`}
+      className={`scroll-smooth-fast ${dmSans.variable} ${playfairDisplay.variable} ${jetbrainsMono.variable}`}
     >
       <body>
         <OfflineBanner />

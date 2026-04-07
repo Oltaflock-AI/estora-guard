@@ -142,9 +142,10 @@ async function getTransaction(id: string) {
 export default async function TransactionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const data = await getTransaction(params.id);
+  const { id } = await params;
+  const data = await getTransaction(id);
   if (!data) notFound();
 
   return <TransactionDetail data={data} />;

@@ -28,9 +28,9 @@ Read `architecture.md` for the full Guard design before writing any agent code.
 
 ## Architecture
 
-This is a **self-contained Next.js 14 application** using **Supabase** as the backend. There is no separate API server.
+This is a **self-contained Next.js 15 application** using **Supabase** as the backend. There is no separate API server.
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 15 (App Router)
 - **Language:** TypeScript (strict mode)
 - **Database:** Supabase PostgreSQL with Row-Level Security
 - **Auth:** Supabase Auth (email/password)
@@ -401,6 +401,12 @@ If any link in either path is broken, stop and fix it before anything else.
 
 ---
 
-## Confidence rule
+## Change confidence and shipping discipline
 
-Only make changes when 95%+ confident they won't break existing functionality. The agent layer is additive. When in doubt, add, don't modify.
+### When to edit the codebase
+
+Do not land a change unless you are **at least ~95% sure** it is correct for this repo and will not regress existing behavior. If you are below that bar, gather more context (read callers, run a quick repro, check types) until you cross it—or stop and propose a safer approach instead of guessing. For Estora Guard specifically, prefer additive changes over risky refactors when the requirement is ambiguous.
+
+### Verify before commit or deploy
+
+After you implement something, **exercise it locally** before you treat the work as done: run the dev server or the relevant script, run **tests** (`npm test`) when they apply, and fix failures. Only **commit** or **deploy** once that verification passes (or you have a documented, intentional exception). Shipping or committing untested edits is avoided.

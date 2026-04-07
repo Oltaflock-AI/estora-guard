@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth-helpers';
 import { createAuditEvent } from '@/lib/services/audit-service';
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { userId } = await requireAuth(supabase);
 
   const body = await request.json();

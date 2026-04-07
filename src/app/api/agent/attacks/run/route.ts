@@ -8,7 +8,7 @@ import { ATTACKS } from '@/lib/agent/attacks';
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient = createClient();
+    const authClient = await createClient();
     const { userId } = await requireAuth(authClient);
 
     const body = await request.json();

@@ -14,11 +14,11 @@ Real estate transaction intelligence platform with a role-aware AI agent and pol
 
 ## Architecture
 
-Self-contained Next.js 14 application using Supabase as the backend. No separate API server.
+Self-contained Next.js 15 application using Supabase as the backend. No separate API server.
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Language | TypeScript (strict mode) |
 | Database | Supabase (PostgreSQL + Row-Level Security) |
 | Auth | Supabase Auth (email/password) |

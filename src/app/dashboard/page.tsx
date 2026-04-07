@@ -8,7 +8,7 @@ import { getUserOrgs } from '@/lib/auth-helpers';
 import type { ContractWithRelations } from '@/lib/types';
 
 async function DealListLoader() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const serviceClient = createServiceClient();
 
   // Get the user's org IDs so we can scope the query

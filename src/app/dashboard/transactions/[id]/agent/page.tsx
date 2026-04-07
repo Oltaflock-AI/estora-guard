@@ -33,9 +33,10 @@ async function getTransactionBasics(id: string) {
 export default async function AgentPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const data = await getTransactionBasics(params.id);
+  const { id } = await params;
+  const data = await getTransactionBasics(id);
   if (!data) notFound();
 
   const { contract, property } = data;
@@ -47,7 +48,7 @@ export default async function AgentPage({
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href={`/dashboard/transactions/${params.id}`}
+          href={`/dashboard/transactions/${id}`}
           className="text-secondary hover:text-navy transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -68,7 +69,7 @@ export default async function AgentPage({
       <NemoClawBanner />
 
       <div className="card min-h-[600px] flex flex-col">
-        <AgentPanel transactionId={params.id} />
+        <AgentPanel transactionId={id} />
       </div>
     </div>
   );

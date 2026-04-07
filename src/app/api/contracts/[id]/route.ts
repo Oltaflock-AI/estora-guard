@@ -3,9 +3,9 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const serviceClient = createServiceClient();
 
   const {
@@ -15,7 +15,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
   }
 
-  const contractId = params.id;
+  const { id: contractId } = await params;
 
   // Verify contract exists
   const { data: contract } = await serviceClient

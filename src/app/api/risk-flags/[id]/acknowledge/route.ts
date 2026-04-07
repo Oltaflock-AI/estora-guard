@@ -5,9 +5,9 @@ import type { Database } from '@/lib/supabase/database.types';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const serviceClient = createServiceClient();
 
   const {
@@ -17,7 +17,7 @@ export async function POST(
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
   }
 
-  const flagId = params.id;
+  const { id: flagId } = await params;
 
   let body: { note?: string } = {};
   try {

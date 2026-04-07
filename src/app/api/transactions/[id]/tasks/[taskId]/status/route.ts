@@ -9,11 +9,13 @@ type TaskStatus = (typeof VALID_STATUSES)[number];
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; taskId: string } }
+  { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
-  const authClient = createClient();
+  const authClient = await createClient();
   const { userId } = await requireAuth(authClient);
   const supabase = createServiceClient();
+
+  const { id: contractId, taskId } = await params;
 
   const body = await request.json();
   const newStatus = body.status as string;
@@ -28,8 +30,8 @@ export async function PATCH(
   const { data: existing, error: fetchErr } = await supabase
     .from('tasks')
     .select('*')
-    .eq('id', params.taskId)
-    .eq('contract_id', params.id)
+    .eq('id', taskId)
+    .eq('contract_id', contractId)
     .single();
 
   if (fetchErr || !existing) {
@@ -41,7 +43,7 @@ export async function PATCH(
   const { data: updated, error: updateErr } = await supabase
     .from('tasks')
     .update({ status: newStatus as TaskStatus })
-    .eq('id', params.taskId)
+    .eq('id', taskId)
     .select('*')
     .single();
 
@@ -57,14 +59,14 @@ export async function PATCH(
     actorId: userId,
     action: 'task.status_changed',
     entityType: 'task',
-    entityId: params.taskId,
+    entityId: taskId,
     fieldName: 'status',
     oldValue: oldStatus,
     newValue: newStatus,
-    detail: { contractId: params.id },
+    detail: { contractId },
   });
 
-  const health = await computeHealthScore(supabase, params.id);
+  const health = await computeHealthScore(supabase, contractId);
 
   await supabase
     .from('contracts')
@@ -72,7 +74,7 @@ export async function PATCH(
       health_score: health.score,
       health_status: health.status,
     })
-    .eq('id', params.id);
+    .eq('id', contractId);
 
   return NextResponse.json({ task: updated, health });
 }

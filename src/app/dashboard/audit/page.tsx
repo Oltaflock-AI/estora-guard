@@ -9,7 +9,7 @@ interface SearchParams {
 }
 
 async function loadAuditEvents(searchParams: SearchParams) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const page = parseInt(searchParams.page ?? '1', 10);
   const pageSize = 25;
   const from = (page - 1) * pageSize;
@@ -71,9 +71,10 @@ async function loadAuditEvents(searchParams: SearchParams) {
 export default async function AuditPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
-  const data = await loadAuditEvents(searchParams);
+  const sp = await searchParams;
+  const data = await loadAuditEvents(sp);
 
   return (
     <div className="space-y-6">
@@ -90,8 +91,8 @@ export default async function AuditPage({
         total={data.total}
         page={data.page}
         pageSize={data.pageSize}
-        currentEntityType={searchParams.entity_type}
-        currentAction={searchParams.action}
+        currentEntityType={sp.entity_type}
+        currentAction={sp.action}
       />
     </div>
   );

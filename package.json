@@ -12,14 +12,19 @@
     "types:supabase": "supabase gen types typescript --project-id xpttymnscwklxavpcmpt > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@anthropic-ai/sdk": "^0.85.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.3",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.577.0",
-    "next": "^14.2.35",
+    "next": "^15.5.14",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "overrides": {
+    "anymatch": { "picomatch": "^2.3.2" },
+    "micromatch": { "picomatch": "^2.3.2" },
+    "readdirp": { "picomatch": "^2.3.2" }
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -30,7 +35,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.35",
+    "eslint-config-next": "^15.5.14",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",

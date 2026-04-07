@@ -18,9 +18,9 @@ interface SavePayload {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const serviceClient = createServiceClient();
 
   const {
@@ -30,7 +30,7 @@ export async function POST(
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
   }
 
-  const contractId = params.id;
+  const { id: contractId } = await params;
 
   let body: SavePayload;
   try {
