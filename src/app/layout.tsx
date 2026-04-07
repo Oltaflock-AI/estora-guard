@@ -24,7 +24,18 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+function appOrigin(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
+  }
+  return 'http://localhost:3000';
+}
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appOrigin()),
   title: {
     default: 'Estora — Real estate transaction intelligence',
     template: '%s | Estora',

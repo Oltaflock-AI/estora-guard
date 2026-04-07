@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Estora — Real Estate Transaction Intelligence',
     description: 'From contract upload to close — with intelligence at every step. Join the waitlist.',
+    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
