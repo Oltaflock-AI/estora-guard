@@ -336,6 +336,141 @@
   }
 }
 
+/* ── Landing hero: deal health + timeline mock ── */
+.landing-estora-light .landing-hero-mock {
+  perspective: 880px;
+}
+
+.landing-estora-light .landing-mock-enter {
+  opacity: 0;
+  animation: landingMockEnter 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-estora-light .landing-mock-float {
+  animation: landingMockFloat 4.8s ease-in-out 0.85s infinite alternate;
+}
+
+@keyframes landingMockEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes landingMockFloat {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-7px);
+  }
+}
+
+.landing-estora-light .landing-mock-back-card {
+  opacity: 0;
+  animation: landingBackCardEnter 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+}
+
+@keyframes landingBackCardEnter {
+  from {
+    opacity: 0;
+    transform: translate(8px, 12px) rotate(-2deg);
+  }
+  to {
+    opacity: 0.92;
+    transform: translate(0, 0) rotate(-2deg);
+  }
+}
+
+.landing-estora-light .landing-health-score {
+  animation: landingHealthGlow 2.8s ease-in-out infinite;
+}
+
+@keyframes landingHealthGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 151, 58, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(201, 151, 58, 0.2);
+  }
+}
+
+.landing-estora-light .landing-timeline-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--color-surface-sunken);
+}
+
+.landing-estora-light .landing-timeline-bar {
+  height: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(201, 151, 58, 0.42),
+    rgba(201, 151, 58, 0.14)
+  );
+  animation: landingBarGrow 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-estora-light .landing-timeline-rows > div:nth-child(1) .landing-timeline-bar {
+  animation-delay: 0.45s;
+}
+.landing-estora-light .landing-timeline-rows > div:nth-child(2) .landing-timeline-bar {
+  animation-delay: 0.62s;
+}
+.landing-estora-light .landing-timeline-rows > div:nth-child(3) .landing-timeline-bar {
+  animation-delay: 0.78s;
+}
+
+@keyframes landingBarGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.landing-estora-light .landing-timeline-blur {
+  filter: blur(2.5px);
+  animation: landingBlurSettle 1.4s ease-out 0.4s forwards;
+}
+
+@keyframes landingBlurSettle {
+  from {
+    filter: blur(4px);
+    opacity: 0.65;
+  }
+  to {
+    filter: blur(2.5px);
+    opacity: 1;
+  }
+}
+
+.landing-estora-light .landing-risk-flag {
+  opacity: 0;
+  animation: landingRiskReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.95s forwards;
+}
+
+@keyframes landingRiskReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-estora-light .lp-hero-line,
   .landing-estora-light .lp-hero-sub,
@@ -356,5 +491,33 @@
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  .landing-estora-light .landing-mock-enter,
+  .landing-estora-light .landing-mock-back-card,
+  .landing-estora-light .landing-risk-flag {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .landing-estora-light .landing-mock-float {
+    animation: none !important;
+  }
+
+  .landing-estora-light .landing-health-score {
+    animation: none !important;
+    box-shadow: none !important;
+  }
+
+  .landing-estora-light .landing-timeline-bar {
+    animation: none !important;
+    transform: scaleX(1) !important;
+  }
+
+  .landing-estora-light .landing-timeline-blur {
+    animation: none !important;
+    filter: blur(2.5px) !important;
+    opacity: 1 !important;
   }
 }
