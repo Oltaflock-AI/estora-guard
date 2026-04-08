@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sendWaitlistConfirmationEmail } from '@/lib/email/send-waitlist-confirmation';
 import { isWaitlistOnly } from '@/lib/waitlist';
 import type { Json } from '@/lib/supabase/database.types';
 
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
         ok: true,
         alreadyListed: true,
         message: "You're already on the list. We'll be in touch.",
+        emailSent: false,
       });
     }
     console.error(
@@ -101,9 +103,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const emailResult = await sendWaitlistConfirmationEmail({ to: email, name });
+  if (!emailResult.ok) {
+    console.error('waitlist confirmation email:', emailResult.error);
+  }
+
   return NextResponse.json({
     ok: true,
     alreadyListed: false,
     message: "You're on the list. We'll email you when access opens.",
+    emailSent: emailResult.ok && !emailResult.skipped,
   });
 }

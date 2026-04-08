@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, Loader2 } from 'lucide-react';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -40,6 +40,15 @@ export default function EstoraWaitlistForm({
   const [painPoint, setPainPoint] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status !== 'success') return;
+    const id = window.setTimeout(() => {
+      setStatus('idle');
+      setMessage(null);
+    }, 7000);
+    return () => window.clearTimeout(id);
+  }, [status]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
