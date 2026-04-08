@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  /** Hide the Next.js dev indicator (corner “N”) — useful for clean screenshots */
+  devIndicators: false,
+
   experimental: {
     serverActions: {
       bodySizeLimit: '25mb',
