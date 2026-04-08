@@ -481,9 +481,14 @@ export default function HomePage() {
             </p>
           </div>
           <div className="text-sm">
-            <a href="mailto:amaan@oltaflock.ai" className="font-medium text-gold hover:text-navy-light">
-              amaan@oltaflock.ai
-            </a>
+            <div className="flex flex-col gap-2">
+              <a href="mailto:amaan@oltaflock.ai" className="font-medium text-gold hover:text-navy-light">
+                amaan@oltaflock.ai
+              </a>
+              <a href="mailto:admin@oltaflock.ai" className="font-medium text-gold hover:text-navy-light">
+                admin@oltaflock.ai
+              </a>
+            </div>
             <p className="mt-6 text-disabled">© {new Date().getFullYear()} Estora. All rights reserved.</p>
           </div>
         </div>

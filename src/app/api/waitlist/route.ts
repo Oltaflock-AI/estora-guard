@@ -42,6 +42,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   }
 
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('waitlist: SUPABASE_SERVICE_ROLE_KEY is not set');
+    return NextResponse.json(
+      { error: 'Could not save your signup. Please try again.' },
+      { status: 500 }
+    );
+  }
+
   let body: { email?: unknown; name?: unknown; source?: unknown; signup_metadata?: unknown };
   try {
     body = await request.json();
@@ -79,7 +87,14 @@ export async function POST(request: NextRequest) {
         message: "You're already on the list. We'll be in touch.",
       });
     }
-    console.error('waitlist_signups insert:', error.message);
+    console.error(
+      'waitlist_signups insert:',
+      error.message,
+      'code:',
+      error.code,
+      'hint:',
+      (error as { hint?: string }).hint
+    );
     return NextResponse.json(
       { error: 'Could not save your signup. Please try again.' },
       { status: 500 }
