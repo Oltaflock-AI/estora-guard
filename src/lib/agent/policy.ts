@@ -44,6 +44,19 @@ const HEALTH_OVERRIDE_PATTERNS = [
   /override\s+(?:the\s+)?health/i,
 ];
 
+const PRIVILEGE_ESCALATION_PATTERNS = [
+  /\bi\s+am\s+(?:the\s+|an?\s+)?(?:system\s+)?admin(?:istrator)?\b/i,
+  /\bi\s+am\s+(?:the\s+)?(?:super[-\s]?user|root|owner)\b/i,
+  /\bas\s+(?:the\s+|an?\s+)?(?:system\s+)?admin(?:istrator)?\b/i,
+  /\belevate\s+(?:my\s+)?(?:privileges?|permissions?|role)\b/i,
+];
+
+const TASK_WRITE_PATTERNS = [
+  /\bmark\s+(?:all\s+|the\s+|every\s+)?(?:contingenc(?:y|ies)|tasks?|items?|checklist|todos?|to-dos?)\s+(?:as\s+)?(?:complete|completed|done|finished|resolved)\b/i,
+  /\b(?:complete|close|finish|resolve)\s+(?:all\s+|every\s+)?(?:contingenc(?:y|ies)|tasks?|items?|checklist|todos?|to-dos?)\b/i,
+  /\bset\s+(?:all\s+)?(?:contingenc(?:y|ies)|tasks?|items?)\s+(?:status\s+)?(?:to\s+)?(?:complete|done|finished)\b/i,
+];
+
 interface PolicyInput {
   message: string;
   approvedActionId?: string;
@@ -80,6 +93,16 @@ export function evaluatePolicy(
   const healthOverrideMatch = HEALTH_OVERRIDE_PATTERNS.some((p) => p.test(message));
   if (healthOverrideMatch) {
     return { decision: 'denied', reason: 'Health score is computed from deal data and cannot be manually set' };
+  }
+
+  const taskWriteMatch = TASK_WRITE_PATTERNS.some((p) => p.test(message));
+  if (taskWriteMatch) {
+    return { decision: 'denied', reason: 'Role not authorized for task writes' };
+  }
+
+  const privilegeEscalationMatch = PRIVILEGE_ESCALATION_PATTERNS.some((p) => p.test(message));
+  if (privilegeEscalationMatch) {
+    return { decision: 'denied', reason: 'Privilege escalation attempt detected' };
   }
 
   // Layer 2: Role authorization
