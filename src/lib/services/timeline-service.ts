@@ -4,6 +4,7 @@ import type { Database } from '@/lib/supabase/database.types';
 type TypedClient = SupabaseClient<Database>;
 type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
 type TimelineInsert = Database['public']['Tables']['timeline_items']['Insert'];
+type RiskFlagInsert = Database['public']['Tables']['risk_flags']['Insert'];
 
 type Audience = 'buyer' | 'seller' | 'both';
 
@@ -355,4 +356,311 @@ export async function generateDefaultTimeline(
     .from('timeline_items')
     .insert(timelineToInsert as never[]);
   if (tlError) throw tlError;
+}
+
+// ─── Disclosure-derived rules ────────────────────────────────────────────────
+//
+// When an SPD or LBP disclosure is attached to an existing contract, this engine
+// re-evaluates a small fixed rule set against the union of all extracted fields
+// across every document linked to that contract, and appends any new tasks /
+// timeline pins / risk flags that the disclosure data implies.
+//
+// Idempotency: tasks dedupe on `dedupe_key`; timeline_items and risk_flags use
+// (contract_id, label/title) lookups before insert. Re-uploading the same
+// disclosure does not double-add.
+
+interface DerivedTask {
+  ruleId: string;
+  title: string;
+  description: string;
+  category: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  audience: 'buyer' | 'seller' | 'both';
+  offsetDaysFromClose: number;
+  alsoOnTimeline: boolean;
+}
+
+interface DerivedFlag {
+  title: string;
+  explanation: string;
+  flagType: 'tight_deadline' | 'missing_clause' | 'unusual_condition' | 'unclear_language' | 'material_defect';
+  severity: 'low' | 'medium' | 'high';
+  audience: 'buyer' | 'seller' | 'both';
+}
+
+function asBool(v: string | null | undefined): boolean | null {
+  if (v == null) return null;
+  const s = v.toString().trim().toLowerCase();
+  if (s === 'true' || s === 'yes' || s === '1') return true;
+  if (s === 'false' || s === 'no' || s === '0') return false;
+  return null;
+}
+
+function asNum(v: string | null | undefined): number | null {
+  if (v == null) return null;
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function evaluateRules(fields: Record<string, string | null>): {
+  tasks: DerivedTask[];
+  flags: DerivedFlag[];
+} {
+  const tasks: DerivedTask[] = [];
+  const flags: DerivedFlag[] = [];
+
+  // ── SPD rules ──────────────────────────────────────────────────────────────
+
+  // Rule 1 — Active radon mitigation system → walkthrough verification task (buyer)
+  if (asBool(fields.radon_mitigation_present) === true) {
+    tasks.push({
+      ruleId: 'radon_walkthrough_check',
+      title: 'Verify radon mitigation system at walkthrough',
+      description:
+        'Active radon mitigation system installed (per SPD). Confirm system is functioning, request maintenance/installation records from seller, and verify post-mitigation reading is below EPA action level (4.0 pCi/L).',
+      category: 'Inspection',
+      severity: 'high',
+      audience: 'buyer',
+      offsetDaysFromClose: -1,
+      alsoOnTimeline: true,
+    });
+  }
+
+  // Rule 2 — Roof warranty transferable → seller deliverable (seller)
+  if (asBool(fields.roof_warranty_transferable) === true) {
+    tasks.push({
+      ruleId: 'roof_warranty_transfer',
+      title: 'Provide transferable roof warranty documentation',
+      description:
+        'Roof warranty is transferable per SPD. Seller to deliver warranty documentation and transfer paperwork to buyer prior to settlement.',
+      category: 'Documentation',
+      severity: 'medium',
+      audience: 'seller',
+      offsetDaysFromClose: -7,
+      alsoOnTimeline: true,
+    });
+  }
+
+  // Rule 3 — Deck permit number disclosed → seller deliverable (seller, task only)
+  const deckPermit = (fields.deck_permit_number ?? '').trim();
+  if (deckPermit && deckPermit.toLowerCase() !== 'none' && deckPermit.toLowerCase() !== 'n/a') {
+    tasks.push({
+      ruleId: 'deck_permit_docs',
+      title: `Provide deck permit documentation (${deckPermit})`,
+      description:
+        'SPD references a permitted deck addition. Seller to provide a copy of the permit and any final inspection sign-off for the buyer\'s records.',
+      category: 'Documentation',
+      severity: 'low',
+      audience: 'seller',
+      offsetDaysFromClose: -7,
+      alsoOnTimeline: false,
+    });
+  }
+
+  // Rule 4 — Radon test value at or above EPA action level → flag (buyer)
+  const radonValue = asNum(fields.radon_test_value_pci_l);
+  if (radonValue !== null && radonValue >= 4.0) {
+    flags.push({
+      title: `Radon tested at ${radonValue} pCi/L — at or above EPA action level`,
+      explanation: `Initial radon test reported ${radonValue} pCi/L (EPA action level is 4.0 pCi/L). Mitigation system was installed, but buyer should request the post-mitigation reading and verify ongoing system operation before settlement.`,
+      flagType: 'material_defect',
+      severity: 'medium',
+      audience: 'buyer',
+    });
+  }
+
+  // Rule 5 — Basement wall cracks disclosed → flag (buyer)
+  if (asBool(fields.basement_wall_cracks_disclosed) === true) {
+    flags.push({
+      title: 'Hairline cracks disclosed in basement walls',
+      explanation:
+        'Seller disclosed cracks in basement walls (described as cosmetic). Buyer should verify with a qualified inspector during the inspection contingency period.',
+      flagType: 'material_defect',
+      severity: 'low',
+      audience: 'buyer',
+    });
+  }
+
+  // Rule 6 — No basement waterproofing system → flag (buyer)
+  if (asBool(fields.basement_waterproofed) === false) {
+    flags.push({
+      title: 'Basement has no waterproofing system',
+      explanation:
+        'SPD reports no interior or exterior basement waterproofing system. Confirm acceptable given full unfinished basement; buyer may want to budget for a future system or sump-pump backup.',
+      flagType: 'material_defect',
+      severity: 'low',
+      audience: 'buyer',
+    });
+  }
+
+  // ── LBP rules ─────────────────────────────────────────────────────────────
+
+  // Rule 7 — Pre-1978 property + buyer waived inspection → flag (buyer)
+  const yearBuilt = asNum(fields.year_built);
+  const lbpInspectionElected = asBool(fields.lead_based_paint_inspection_elected);
+  if (yearBuilt !== null && yearBuilt < 1978 && lbpInspectionElected === false) {
+    flags.push({
+      title: 'Pre-1978 property; lead-based paint inspection not elected by buyer',
+      explanation:
+        'Federal law (42 U.S.C. §4852d) gives buyers of pre-1978 properties a 10-day right to a lead-paint risk assessment. Buyer waived this right per the signed LBP disclosure. Documented residual exposure — flag retained for the agent\'s record.',
+      flagType: 'unusual_condition',
+      severity: 'medium',
+      audience: 'buyer',
+    });
+  }
+
+  return { tasks, flags };
+}
+
+export async function applyDisclosureRules(
+  supabase: TypedClient,
+  contractId: string,
+  sourceDocumentId: string
+): Promise<{ tasksAdded: number; timelineAdded: number; flagsAdded: number }> {
+  // 1. Pull every extraction across every document linked to this contract.
+  const { data: docs } = await supabase
+    .from('documents')
+    .select('id')
+    .eq('contract_id', contractId);
+  const docIds = ((docs ?? []) as Array<{ id: string }>).map((d) => d.id);
+  if (docIds.length === 0) {
+    return { tasksAdded: 0, timelineAdded: 0, flagsAdded: 0 };
+  }
+
+  const { data: extractionRows } = await supabase
+    .from('extractions')
+    .select('field_name, field_value')
+    .in('document_id', docIds);
+
+  const fields: Record<string, string | null> = {};
+  for (const row of (extractionRows ?? []) as Array<{ field_name: string; field_value: string | null }>) {
+    // Last-wins; later docs (e.g., SPD) override AOS for shared fields like year_built.
+    fields[row.field_name] = row.field_value;
+  }
+
+  // 2. Pull contract closing_date as the anchor for relative due dates.
+  const { data: contractRow } = await supabase
+    .from('contracts')
+    .select('closing_date')
+    .eq('id', contractId)
+    .maybeSingle();
+  const closeDateStr = (contractRow as { closing_date: string | null } | null)?.closing_date ?? null;
+
+  // 3. Evaluate the rule set.
+  const { tasks: derivedTasks, flags: derivedFlags } = evaluateRules(fields);
+
+  // 4. Insert tasks (idempotent via dedupe_key).
+  let tasksAdded = 0;
+  let timelineAdded = 0;
+
+  for (const t of derivedTasks) {
+    const dedupeKey = `disclosure_rule:${contractId}:${t.ruleId}`;
+
+    const { data: existingTask } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('dedupe_key', dedupeKey)
+      .maybeSingle();
+    if (existingTask) continue;
+
+    const dueAt = closeDateStr
+      ? (() => {
+          const d = new Date(closeDateStr);
+          d.setDate(d.getDate() + t.offsetDaysFromClose);
+          return d.toISOString();
+        })()
+      : null;
+
+    const taskRow: TaskInsert = {
+      contract_id: contractId,
+      title: t.title,
+      description: t.description,
+      category: t.category,
+      severity: t.severity,
+      audience: t.audience,
+      status: 'todo',
+      offset_days: t.offsetDaysFromClose,
+      due_at: dueAt,
+      dedupe_key: dedupeKey,
+    };
+
+    const { error: taskErr } = await supabase.from('tasks').insert(taskRow as never);
+    if (taskErr) {
+      console.error('Disclosure rule task insert failed:', taskErr.message, t.ruleId);
+      continue;
+    }
+    tasksAdded++;
+
+    if (t.alsoOnTimeline) {
+      const { data: existingTl } = await supabase
+        .from('timeline_items')
+        .select('id')
+        .eq('contract_id', contractId)
+        .eq('label', t.title)
+        .maybeSingle();
+      if (!existingTl) {
+        // Append to the end of the timeline.
+        const { data: maxRow } = await supabase
+          .from('timeline_items')
+          .select('sort_order')
+          .eq('contract_id', contractId)
+          .order('sort_order', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextSort =
+          ((maxRow as { sort_order: number } | null)?.sort_order ?? 0) + 1;
+
+        const tlRow: TimelineInsert = {
+          contract_id: contractId,
+          label: t.title,
+          description: t.description,
+          milestone_type: null,
+          audience: t.audience,
+          due_at: dueAt,
+          sort_order: nextSort,
+        };
+        const { error: tlErr } = await supabase
+          .from('timeline_items')
+          .insert(tlRow as never);
+        if (tlErr) {
+          console.error('Disclosure rule timeline insert failed:', tlErr.message, t.ruleId);
+        } else {
+          timelineAdded++;
+        }
+      }
+    }
+  }
+
+  // 5. Insert risk flags (dedupe by contract_id + title).
+  let flagsAdded = 0;
+
+  for (const f of derivedFlags) {
+    const { data: existingFlag } = await supabase
+      .from('risk_flags')
+      .select('id')
+      .eq('contract_id', contractId)
+      .eq('title', f.title)
+      .maybeSingle();
+    if (existingFlag) continue;
+
+    const flagRow: RiskFlagInsert = {
+      document_id: sourceDocumentId,
+      contract_id: contractId,
+      flag_type: f.flagType,
+      severity: f.severity,
+      title: f.title,
+      explanation: f.explanation,
+      audience: f.audience,
+    };
+    const { error: flagErr } = await supabase
+      .from('risk_flags')
+      .insert(flagRow as never);
+    if (flagErr) {
+      console.error('Disclosure rule flag insert failed:', flagErr.message, f.title);
+      continue;
+    }
+    flagsAdded++;
+  }
+
+  return { tasksAdded, timelineAdded, flagsAdded };
 }

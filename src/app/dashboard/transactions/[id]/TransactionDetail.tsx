@@ -19,7 +19,6 @@ import HealthBar from '@/components/HealthBar';
 import TimelineView from '@/components/TimelineView';
 import TaskList from '@/components/TaskList';
 import RiskFlagPanel from '@/components/RiskFlagPanel';
-import AttachDisclosureButton from '@/components/AttachDisclosureButton';
 import WireFraudBanner from '@/components/security/WireFraudBanner';
 import ClosingProximityFlag from '@/components/security/ClosingProximityFlag';
 import {
@@ -248,7 +247,6 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
                 <Paperclip className="w-4 h-4" />
                 Files
               </Link>
-              <AttachDisclosureButton contractId={contract.id} />
             </div>
           </div>
         </div>

@@ -48,7 +48,7 @@ Condition fields: subject_to_mortgage_contingency, seller_has_right_to_sell, sel
 
 Inspection election fields (PA): home_inspection_elected, wood_destroying_insect_inspection_elected, radon_inspection_elected, mold_inspection_elected, water_quality_inspection_elected, septic_inspection_elected, lead_based_paint_inspection_elected, boundary_survey_elected
 
-Disclosure / utility fields (PA): water_source, sewage_disposal, seller_disclosure_attached, lead_based_paint_disclosure_attached, radon_mitigation_present, megan_law_notice_acknowledged, governing_law_state
+Disclosure / utility fields (PA): water_source, sewage_disposal, seller_disclosure_attached, lead_based_paint_disclosure_attached, radon_mitigation_present, radon_test_value_pci_l, basement_waterproofed, basement_wall_cracks_disclosed, roof_warranty_transferable, deck_permit_number, megan_law_notice_acknowledged, governing_law_state
 
 Escrow fields: escrow_agent_name, bank_name, account_reference, amount_held, segregated_account
 

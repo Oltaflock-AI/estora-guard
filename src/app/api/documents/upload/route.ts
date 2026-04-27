@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { runExtraction, PdfValidationError, ExtractionError, LlamaParseError } from '@/lib/services/document-intelligence';
+import { applyDisclosureRules } from '@/lib/services/timeline-service';
 import { createAuditEvent } from '@/lib/services/audit-service';
 import type { Database } from '@/lib/supabase/database.types';
 
@@ -264,6 +265,22 @@ export async function POST(request: NextRequest) {
           .insert(flagRows as never[]);
       }
 
+      // Disclosure-derived rules: when an SPD/LBP/addendum is attached to an
+      // existing transaction, append any tasks / timeline pins / risk flags
+      // its content implies. Idempotent — re-uploading the same file is a no-op.
+      let derivedSummary = { tasksAdded: 0, timelineAdded: 0, flagsAdded: 0 };
+      if (linkedContractId && (finalDocType === 'disclosure' || finalDocType === 'addendum')) {
+        try {
+          derivedSummary = await applyDisclosureRules(
+            serviceClient,
+            linkedContractId,
+            doc.id
+          );
+        } catch (err) {
+          console.error('applyDisclosureRules failed:', err);
+        }
+      }
+
       await createAuditEvent(serviceClient, {
         orgId,
         actorId: user.id,
@@ -277,6 +294,10 @@ export async function POST(request: NextRequest) {
           fieldCount: result.fields.length,
           riskFlagCount: result.riskFlags.length,
           contractId: linkedContractId,
+          docType: finalDocType,
+          derivedTasksAdded: derivedSummary.tasksAdded,
+          derivedTimelineAdded: derivedSummary.timelineAdded,
+          derivedFlagsAdded: derivedSummary.flagsAdded,
         },
       });
 
@@ -287,6 +308,8 @@ export async function POST(request: NextRequest) {
         summary: result.summary,
         fieldCount: result.fields.length,
         riskFlagCount: result.riskFlags.length,
+        derived: derivedSummary,
+        contractId: linkedContractId,
       });
     } catch (err) {
       await serviceClient

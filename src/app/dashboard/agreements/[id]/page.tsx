@@ -303,7 +303,7 @@ export default function AgreementWorkspacePage() {
   const [documents, setDocuments] = useState<DocRow[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [docUploading, setDocUploading] = useState(false);
-  const [docUploadType, setDocUploadType] = useState<'disclosure' | 'addendum' | 'other'>('other');
+  const [docUploadType, setDocUploadType] = useState<'disclosure' | 'addendum'>('disclosure');
   const [selectedDocExtractions, setSelectedDocExtractions] = useState<ExtractionRow[]>([]);
   const [extractionsLoading, setExtractionsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -409,13 +409,10 @@ export default function AgreementWorkspacePage() {
       fd.append('doc_type', docUploadType);
       const res = await fetch('/api/documents/upload', { method: 'POST', body: fd });
       if (res.ok) {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('documents')
-          .select('id, filename, doc_type, status')
-          .eq('contract_id', contractId)
-          .order('created_at', { ascending: true });
-        setDocuments((data ?? []) as DocRow[]);
+        // Push back to the transaction page so the user immediately sees any
+        // newly-derived tasks, timeline pins, and risk flags from this disclosure.
+        router.push(`/dashboard/transactions/${contract.id}`);
+        return;
       }
     } finally {
       setDocUploading(false);
@@ -708,10 +705,10 @@ export default function AgreementWorkspacePage() {
           {/* Upload type selector + button */}
           <select
             value={docUploadType}
-            onChange={(e) => setDocUploadType(e.target.value as 'disclosure' | 'addendum' | 'other')}
+            onChange={(e) => setDocUploadType(e.target.value as 'disclosure' | 'addendum')}
             className="field-input text-xs py-1 h-7 max-w-[140px] flex-shrink-0"
+            aria-label="Document type to upload"
           >
-            <option value="other">Other document</option>
             <option value="disclosure">Disclosure</option>
             <option value="addendum">Addendum</option>
           </select>
