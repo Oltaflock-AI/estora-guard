@@ -32,13 +32,15 @@ export interface ExtractionResult {
 
 const FIELD_LIST = `**Field names to extract (include all that are present):**
 
+Document classification (always include): document_kind — exactly one of "agreement_of_sale", "sellers_property_disclosure", "lead_based_paint_disclosure", "addendum", "other". Pick the value that best describes what the document IS, based on its title, structure, and content (not by guessing). PAR Form ASR → "agreement_of_sale". PAR Form SPD → "sellers_property_disclosure". HUD/EPA Lead-Based Paint Disclosure → "lead_based_paint_disclosure". A short rider, amendment, or supplement to an existing AOS → "addendum". Anything else → "other".
+
 Party fields: seller_first_name, seller_last_name, seller_email, seller_phone, seller_city, seller_state, seller_masked_tax_id, purchaser_first_name, purchaser_last_name, purchaser_email, purchaser_phone, purchaser_city, purchaser_state, purchaser_masked_tax_id, seller_attorney_name, purchaser_attorney_name, seller_broker_name, buyer_broker_name, brokerage_name
 
 Property fields: street_1, street_2, city, state, county, municipality, postal_code, school_district, tax_parcel_id, mls_number, zoning, property_type, bedrooms, bathrooms, year_built, legal_description, has_public_road_access, delivered_vacant, as_is_sale
 
-Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, acceptable_funds, seller_assist_amount, pa_realty_transfer_tax, local_transfer_tax
+Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, acceptable_funds, initial_deposit_amount, additional_deposit_amount, seller_assist_amount, pa_realty_transfer_tax_seller, pa_realty_transfer_tax_buyer, local_transfer_tax
 
-Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, mortgage_term_years, escrow_required, commitment_received
+Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, mortgage_term_years, pre_approval_letter_date, escrow_required, commitment_received
 
 Date fields: contract_date, closing_date, settlement_date, commitment_date, inspection_deadline, inspection_contingency_days, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
 

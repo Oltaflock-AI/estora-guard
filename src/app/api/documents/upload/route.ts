@@ -221,9 +221,28 @@ export async function POST(request: NextRequest) {
     try {
       const result = await runExtraction(buffer);
 
-      const finalDocType = linkedContractId
-        ? resolvedRequestedType ?? 'other'
-        : 'agreement_of_sale';
+      // Auto-classify based on what Claude saw in the document, falling back to
+      // the UI's hint only if Claude didn't return a kind.
+      const documentKind =
+        result.fields.find((f) => f.fieldName === 'document_kind')?.fieldValue ?? null;
+
+      const kindToDocType: Record<string, 'agreement_of_sale' | 'disclosure' | 'addendum' | 'other'> = {
+        agreement_of_sale: 'agreement_of_sale',
+        sellers_property_disclosure: 'disclosure',
+        lead_based_paint_disclosure: 'disclosure',
+        addendum: 'addendum',
+        other: 'other',
+      };
+
+      const classifiedDocType = documentKind ? kindToDocType[documentKind] ?? null : null;
+
+      // Resolution priority: classified by Claude > UI hint > sensible default.
+      // Primary uploads (no contract_id) default to agreement_of_sale; attached
+      // uploads default to other.
+      const finalDocType =
+        classifiedDocType
+        ?? resolvedRequestedType
+        ?? (linkedContractId ? 'other' : 'agreement_of_sale');
 
       await serviceClient
         .from('documents')

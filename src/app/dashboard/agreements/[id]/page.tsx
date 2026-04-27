@@ -21,6 +21,8 @@ import SectionNavigator from '@/components/SectionNavigator';
 import EditCanvas from '@/components/EditCanvas';
 import ValidationPanel, { runValidation } from '@/components/ValidationPanel';
 import AuditTrail from '@/components/AuditTrail';
+import DisclosureViewer from '@/components/DisclosureViewer';
+import type { RiskFlag } from '@/lib/types';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAddress, formatRelativeTime } from '@/lib/utils';
 import type {
@@ -58,6 +60,7 @@ const PURCHASER_FIELD_MAP: Record<string, string> = {
 
 const PROPERTY_FIELDS = new Set([
   'street_1', 'street_2', 'city', 'county', 'postal_code',
+  'municipality', 'school_district', 'tax_parcel_id', 'mls_number', 'zoning',
   'property_type', 'bedrooms', 'bathrooms', 'year_built',
   'legal_description', 'has_public_road_access', 'delivered_vacant', 'as_is_sale',
 ]);
@@ -70,6 +73,17 @@ const CONTRACT_FIELDS = new Set([
   'no_undisclosed_abatements', 'title_insurable', 'premises_broom_clean',
   'systems_in_working_order', 'smoke_detector_affidavit_required',
   'certificate_of_occupancy_required', 'firpta_cert_required', 'notes',
+  // PA-specific
+  'initial_deposit_amount', 'additional_deposit_amount', 'seller_assist_amount',
+  'mortgage_term_years', 'pre_approval_letter_date',
+  'inspection_contingency_days', 'inspection_deadline',
+  'home_inspection_elected', 'wood_destroying_insect_inspection_elected',
+  'radon_inspection_elected', 'mold_inspection_elected',
+  'water_quality_inspection_elected', 'septic_inspection_elected',
+  'lead_based_paint_inspection_elected', 'boundary_survey_elected',
+  'settlement_time', 'settlement_location',
+  'pa_realty_transfer_tax_seller', 'pa_realty_transfer_tax_buyer', 'local_transfer_tax',
+  'water_source', 'sewage_disposal', 'megan_law_notice_acknowledged',
 ]);
 
 function flattenContract(
@@ -105,6 +119,11 @@ function flattenContract(
   vals.city = contract.property?.city ?? '';
   vals.county = contract.property?.county ?? '';
   vals.postal_code = contract.property?.postal_code ?? '';
+  vals.municipality = contract.property?.municipality ?? '';
+  vals.school_district = contract.property?.school_district ?? '';
+  vals.tax_parcel_id = contract.property?.tax_parcel_id ?? '';
+  vals.mls_number = contract.property?.mls_number ?? '';
+  vals.zoning = contract.property?.zoning ?? '';
   vals.property_type = contract.property?.property_type ?? '';
   vals.bedrooms = contract.property?.bedrooms ?? null;
   vals.bathrooms = contract.property?.bathrooms ?? null;
@@ -135,6 +154,31 @@ function flattenContract(
   vals.certificate_of_occupancy_required = contract.certificate_of_occupancy_required;
   vals.firpta_cert_required = contract.firpta_cert_required;
   vals.notes = contract.notes;
+
+  // PA-specific fields ─────────────────────────────────────────────────────
+  vals.initial_deposit_amount = contract.initial_deposit_amount;
+  vals.additional_deposit_amount = contract.additional_deposit_amount;
+  vals.seller_assist_amount = contract.seller_assist_amount;
+  vals.mortgage_term_years = contract.mortgage_term_years;
+  vals.pre_approval_letter_date = contract.pre_approval_letter_date;
+  vals.inspection_contingency_days = contract.inspection_contingency_days;
+  vals.inspection_deadline = contract.inspection_deadline;
+  vals.home_inspection_elected = contract.home_inspection_elected;
+  vals.wood_destroying_insect_inspection_elected = contract.wood_destroying_insect_inspection_elected;
+  vals.radon_inspection_elected = contract.radon_inspection_elected;
+  vals.mold_inspection_elected = contract.mold_inspection_elected;
+  vals.water_quality_inspection_elected = contract.water_quality_inspection_elected;
+  vals.septic_inspection_elected = contract.septic_inspection_elected;
+  vals.lead_based_paint_inspection_elected = contract.lead_based_paint_inspection_elected;
+  vals.boundary_survey_elected = contract.boundary_survey_elected;
+  vals.settlement_time = contract.settlement_time ?? '';
+  vals.settlement_location = contract.settlement_location ?? '';
+  vals.pa_realty_transfer_tax_seller = contract.pa_realty_transfer_tax_seller;
+  vals.pa_realty_transfer_tax_buyer = contract.pa_realty_transfer_tax_buyer;
+  vals.local_transfer_tax = contract.local_transfer_tax;
+  vals.water_source = contract.water_source ?? '';
+  vals.sewage_disposal = contract.sewage_disposal ?? '';
+  vals.megan_law_notice_acknowledged = contract.megan_law_notice_acknowledged;
 
   if (_mortgages.length > 0) {
     const m = _mortgages[0];
@@ -303,8 +347,8 @@ export default function AgreementWorkspacePage() {
   const [documents, setDocuments] = useState<DocRow[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [docUploading, setDocUploading] = useState(false);
-  const [docUploadType, setDocUploadType] = useState<'disclosure' | 'addendum'>('disclosure');
   const [selectedDocExtractions, setSelectedDocExtractions] = useState<ExtractionRow[]>([]);
+  const [selectedDocRiskFlags, setSelectedDocRiskFlags] = useState<RiskFlag[]>([]);
   const [extractionsLoading, setExtractionsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -378,23 +422,30 @@ export default function AgreementWorkspacePage() {
     load();
   }, [contractId]);
 
-  // Load extractions when a non-AOS document is selected
+  // Load extractions + per-doc risk flags when a non-AOS document is selected
   useEffect(() => {
     if (!selectedDocId) {
       setSelectedDocExtractions([]);
+      setSelectedDocRiskFlags([]);
       return;
     }
     const supabase = createClient();
     setExtractionsLoading(true);
-    supabase
-      .from('extractions')
-      .select('id, field_name, field_value, confidence, page_ref')
-      .eq('document_id', selectedDocId)
-      .order('field_name', { ascending: true })
-      .then(({ data }) => {
-        setSelectedDocExtractions((data ?? []) as ExtractionRow[]);
-        setExtractionsLoading(false);
-      });
+    void Promise.all([
+      supabase
+        .from('extractions')
+        .select('id, field_name, field_value, confidence, page_ref')
+        .eq('document_id', selectedDocId)
+        .order('field_name', { ascending: true }),
+      supabase
+        .from('risk_flags')
+        .select('*')
+        .eq('document_id', selectedDocId),
+    ]).then(([extRes, flagRes]) => {
+      setSelectedDocExtractions((extRes.data ?? []) as ExtractionRow[]);
+      setSelectedDocRiskFlags((flagRes.data ?? []) as RiskFlag[]);
+      setExtractionsLoading(false);
+    });
   }, [selectedDocId]);
 
   async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -403,10 +454,11 @@ export default function AgreementWorkspacePage() {
     if (!file || !contract) return;
     setDocUploading(true);
     try {
+      // No doc_type from the UI — Claude classifies the document based on its
+      // content and the route maps that to the right doc_type bucket.
       const fd = new FormData();
       fd.append('file', file);
       fd.append('contract_id', contract.id);
-      fd.append('doc_type', docUploadType);
       const res = await fetch('/api/documents/upload', { method: 'POST', body: fd });
       if (res.ok) {
         // Push back to the transaction page so the user immediately sees any
@@ -702,16 +754,7 @@ export default function AgreementWorkspacePage() {
           {/* Divider */}
           <div className="w-px h-4 bg-border mx-1 flex-shrink-0" />
 
-          {/* Upload type selector + button */}
-          <select
-            value={docUploadType}
-            onChange={(e) => setDocUploadType(e.target.value as 'disclosure' | 'addendum')}
-            className="field-input text-xs py-1 h-7 max-w-[140px] flex-shrink-0"
-            aria-label="Document type to upload"
-          >
-            <option value="disclosure">Disclosure</option>
-            <option value="addendum">Addendum</option>
-          </select>
+          {/* Upload PDF — Estora classifies the document automatically */}
           <input
             ref={fileInputRef}
             type="file"
@@ -723,6 +766,7 @@ export default function AgreementWorkspacePage() {
             onClick={() => fileInputRef.current?.click()}
             disabled={docUploading}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-secondary hover:text-primary hover:bg-surface-sunken rounded-md transition-colors disabled:opacity-50"
+            title="Estora detects the document type automatically"
           >
             {docUploading ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -742,83 +786,27 @@ export default function AgreementWorkspacePage() {
         </div>
       )}
 
-      {/* ── Non-AOS Document Extraction Viewer ─────── */}
+      {/* ── Non-AOS Document Viewer (read-only, sectioned) ─── */}
       {selectedDocId !== null && (() => {
         const doc = documents.find((d) => d.id === selectedDocId);
-        return (
-          <div className="flex-1 px-4 lg:px-8 py-6 max-w-3xl mx-auto w-full">
-            {/* Doc header */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-4 h-4 text-secondary" />
-                <h2 className="text-base font-medium text-navy">{doc?.filename ?? 'Document'}</h2>
-                {doc?.status && (
-                  <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${
-                    doc.status === 'done' ? 'bg-green-50 text-success' :
-                    doc.status === 'processing' ? 'bg-amber-50 text-warning' :
-                    doc.status === 'failed' ? 'bg-red-50 text-error' :
-                    'bg-surface-sunken text-secondary'
-                  }`}>
-                    {doc.status}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-secondary">
-                {doc?.doc_type === 'disclosure' ? 'Disclosure document'
-                  : doc?.doc_type === 'addendum' ? 'Addendum'
-                  : 'Uploaded document'} · Extracted fields below
-              </p>
-              <p className="text-xs text-secondary mt-2">
-                To view the full extraction review for this document,{' '}
-                <Link href={`/dashboard/documents/${selectedDocId}`} className="text-navy underline underline-offset-2 hover:text-navy-light">
-                  open the extraction page →
-                </Link>
-              </p>
-            </div>
-
-            {/* Extracted fields */}
-            {extractionsLoading ? (
+        if (extractionsLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-[300px]">
               <div className="flex items-center gap-2 text-sm text-secondary">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Loading extracted fields…
+                Loading document…
               </div>
-            ) : selectedDocExtractions.length === 0 ? (
-              <div className="card text-center py-10">
-                <p className="text-sm text-secondary">No fields extracted from this document yet.</p>
-                {doc?.status === 'processing' && (
-                  <p className="text-xs text-secondary mt-1">Document is still processing — check back shortly.</p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {selectedDocExtractions.map((ext) => (
-                  <div key={ext.id} className="card !py-3 !px-4 flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-mono uppercase text-secondary tracking-wider mb-0.5">
-                        {ext.field_name.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-sm text-primary font-medium">
-                        {ext.field_value ?? <span className="text-disabled italic">—</span>}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      {ext.confidence !== null && (
-                        <span className={`text-[10px] font-mono ${
-                          ext.confidence >= 0.8 ? 'text-success' :
-                          ext.confidence >= 0.5 ? 'text-warning' : 'text-error'
-                        }`}>
-                          {Math.round(ext.confidence * 100)}%
-                        </span>
-                      )}
-                      {ext.page_ref !== null && (
-                        <p className="text-[10px] text-disabled font-mono">p.{ext.page_ref}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </div>
+          );
+        }
+        return (
+          <DisclosureViewer
+            documentId={selectedDocId}
+            filename={doc?.filename ?? 'Document'}
+            status={doc?.status ?? 'unknown'}
+            extractions={selectedDocExtractions}
+            riskFlags={selectedDocRiskFlags}
+          />
         );
       })()}
 
