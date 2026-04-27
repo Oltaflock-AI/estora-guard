@@ -31,6 +31,43 @@ interface SectionGroup {
   fields: ExtractionRow[];
 }
 
+function CompletionRing({ percent, size = 28 }: { percent: number; size?: number }) {
+  const strokeWidth = 2.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
+
+  let strokeColor = 'var(--color-border)';
+  if (percent >= 100) strokeColor = 'var(--color-success)';
+  else if (percent > 0) strokeColor = 'var(--color-gold)';
+
+  return (
+    <svg width={size} height={size} className="flex-shrink-0 -rotate-90">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="var(--color-border)"
+        strokeWidth={strokeWidth}
+        opacity={0.3}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        className="transition-all duration-500"
+      />
+    </svg>
+  );
+}
+
 const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const SEVERITY_BADGE: Record<string, { label: string; cls: string; Icon: typeof AlertCircle }> = {
   high: { label: 'HIGH', cls: 'badge-error', Icon: AlertCircle },
@@ -76,13 +113,18 @@ export default function DisclosureViewer({
     return result.filter((g) => g.fields.length > 0);
   }, [sections, extractions]);
 
-  const sectionsForNav = groups
-    .map((g, i) => ({
+  const sectionsForNav = groups.map((g, i) => {
+    const extracted = g.fields.length;
+    const expected = g.section ? g.section.fieldNames.length : extracted;
+    const percent = expected === 0 ? 100 : Math.min(100, Math.round((extracted / expected) * 100));
+    return {
       id: g.section ? g.section.id : `_other_${i}`,
       label: g.section ? g.section.label : 'Other extracted fields',
       paragraph: g.section?.paragraph,
-      count: g.fields.length,
-    }));
+      count: extracted,
+      percent,
+    };
+  });
 
   const [activeSectionId, setActiveSectionId] = useState<string>(
     sectionsForNav[0]?.id ?? ''
@@ -124,7 +166,7 @@ export default function DisclosureViewer({
           </p>
           <h3 className="text-sm font-medium text-navy leading-tight">{kindLabel}</h3>
         </div>
-        <nav className="space-y-1">
+        <nav className="flex flex-col gap-1">
           {sectionsForNav.map((s, i) => {
             const isActive = s.id === activeSectionId;
             return (
@@ -132,25 +174,29 @@ export default function DisclosureViewer({
                 key={s.id}
                 onClick={() => handleNavClick(s.id)}
                 className={`
-                  w-full text-left px-2 py-1.5 rounded-md flex items-start gap-2 transition-colors
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg text-left
+                  transition-all duration-150
                   ${
                     isActive
-                      ? 'bg-gold/10 text-navy'
-                      : 'text-secondary hover:text-primary hover:bg-surface-sunken'
+                      ? 'bg-surface-raised shadow-card border border-gold/20 text-navy'
+                      : 'text-secondary hover:bg-surface-raised hover:text-primary'
                   }
                 `}
               >
-                <span className="font-mono text-[10px] text-disabled mt-0.5 w-4 flex-shrink-0">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-xs font-medium leading-tight">{s.label}</span>
-                  {s.paragraph && (
-                    <span className="block text-[10px] text-disabled mt-0.5">
-                      {s.paragraph}
+                <CompletionRing percent={s.percent} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-mono text-disabled">
+                      {String(i + 1).padStart(2, '0')}
                     </span>
-                  )}
-                </span>
+                    <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                  <span className="block text-[10px] text-disabled leading-tight">
+                    {s.paragraph ?? (s.percent < 100 ? `${s.percent}% complete` : 'Complete')}
+                  </span>
+                </div>
                 <span className="text-[10px] font-mono text-disabled flex-shrink-0">
                   {s.count}
                 </span>
@@ -260,7 +306,7 @@ export default function DisclosureViewer({
         <div className="mb-4">
           <h3 className="text-sm font-medium text-navy leading-tight">Risks from this document</h3>
           <p className="text-[10px] text-secondary mt-1">
-            Flags Claude pulled from {kindLabel.toLowerCase()}.
+            Flags Estora pulled from {kindLabel.toLowerCase()}.
           </p>
         </div>
 
