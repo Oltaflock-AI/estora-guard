@@ -24,9 +24,21 @@ function getBool(extractions: Extraction[], name: string): boolean {
   return raw === 'true';
 }
 
-function generateContractNumber(): string {
+function generateContractNumber(stateCode: string): string {
   const seq = Math.floor(Math.random() * 9000) + 1000;
-  return `NYRCS-${seq}`;
+  const prefix = stateCode === 'NY' ? 'NYRCS' : 'PAAOS';
+  return `${prefix}-${seq}`;
+}
+
+function normalizeStateCode(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 2) return trimmed.toUpperCase();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'pennsylvania' || lower === 'commonwealth of pennsylvania') return 'PA';
+  if (lower === 'new york' || lower === 'state of new york') return 'NY';
+  if (lower === 'new jersey') return 'NJ';
+  return trimmed.slice(0, 2).toUpperCase();
 }
 
 export async function POST(
@@ -85,6 +97,22 @@ export async function POST(
   const sellerEmail = getField(extractions, 'seller_email') ?? `${sellerFirst.toLowerCase()}.${sellerLast.toLowerCase()}@pending.estora.app`;
   const purchaserEmail = getField(extractions, 'purchaser_email') ?? `${purchaserFirst.toLowerCase()}.${purchaserLast.toLowerCase()}@pending.estora.app`;
 
+  // State drives jurisdiction-specific defaults (city, county, contract prefix, timeline template).
+  // Property state wins; fall back to seller state, then PA.
+  const propertyState =
+    normalizeStateCode(getField(extractions, 'state'))
+    ?? normalizeStateCode(getField(extractions, 'governing_law_state'))
+    ?? normalizeStateCode(getField(extractions, 'seller_state'))
+    ?? 'PA';
+  const isNY = propertyState === 'NY';
+  const defaultCity = isNY ? 'New York' : 'Lansdale';
+  const defaultCounty = isNY ? 'New York' : 'Montgomery';
+  const defaultPostalCode = isNY ? '10001' : '19446';
+  const sellerStateCode =
+    normalizeStateCode(getField(extractions, 'seller_state')) ?? propertyState;
+  const purchaserStateCode =
+    normalizeStateCode(getField(extractions, 'purchaser_state')) ?? propertyState;
+
   // Expression index lower(email) is incompatible with PostgREST upsert onConflict,
   // so we select-or-insert instead.
   async function resolveOrCreatePerson(fields: {
@@ -103,11 +131,14 @@ export async function POST(
       .single();
     if (existing) return (existing as { id: string }).id;
 
-    const { data: inserted } = await serviceClient
+    const { data: inserted, error: insertErr } = await serviceClient
       .from('people')
       .insert(fields as never)
       .select('id')
       .single();
+    if (insertErr) {
+      console.error('People insert failed:', insertErr.message, fields);
+    }
     return (inserted as { id: string } | null)?.id ?? null;
   }
 
@@ -115,8 +146,8 @@ export async function POST(
     first_name: sellerFirst,
     last_name: sellerLast,
     email: sellerEmail,
-    city: getField(extractions, 'seller_city') ?? 'New York',
-    state: 'NY',
+    city: getField(extractions, 'seller_city') ?? defaultCity,
+    state: sellerStateCode,
     phone: getField(extractions, 'seller_phone'),
   });
 
@@ -124,8 +155,8 @@ export async function POST(
     first_name: purchaserFirst,
     last_name: purchaserLast,
     email: purchaserEmail,
-    city: getField(extractions, 'purchaser_city') ?? 'New York',
-    state: 'NY',
+    city: getField(extractions, 'purchaser_city') ?? defaultCity,
+    state: purchaserStateCode,
     phone: getField(extractions, 'purchaser_phone'),
   });
 
@@ -134,9 +165,9 @@ export async function POST(
   }
 
   const street1 = getField(extractions, 'street_1') ?? '123 Main St';
-  const city = getField(extractions, 'city') ?? 'New York';
-  const county = getField(extractions, 'county') ?? 'New York';
-  const postalCode = getField(extractions, 'postal_code') ?? '10001';
+  const city = getField(extractions, 'city') ?? defaultCity;
+  const county = getField(extractions, 'county') ?? defaultCounty;
+  const postalCode = getField(extractions, 'postal_code') ?? defaultPostalCode;
   const propertyTypeRaw = getField(extractions, 'property_type') ?? 'single_family';
   const validPropertyTypes = ['single_family', 'condo', 'co_op', 'townhouse', 'multi_family'] as const;
   const propertyType = validPropertyTypes.includes(propertyTypeRaw as typeof validPropertyTypes[number])
@@ -150,7 +181,7 @@ export async function POST(
     .select('id')
     .eq('street_1', street1)
     .eq('city', city)
-    .eq('state', 'NY')
+    .eq('state', propertyState)
     .eq('postal_code', postalCode);
   if (street2) {
     propertyQuery = propertyQuery.eq('street_2', street2);
@@ -163,26 +194,31 @@ export async function POST(
   if (existingProperty) {
     propertyId = (existingProperty as { id: string }).id;
   } else {
-    const { data: insertedProperty } = await serviceClient
+    const { data: insertedProperty, error: propInsertErr } = await serviceClient
       .from('properties')
       .insert({
         street_1: street1,
         street_2: street2,
         city,
-        state: 'NY',
+        state: propertyState,
         postal_code: postalCode,
         county,
         property_type: propertyType,
         bedrooms: getNumeric(extractions, 'bedrooms') || null,
         bathrooms: getNumeric(extractions, 'bathrooms') || null,
         year_built: getNumeric(extractions, 'year_built') || null,
-        legal_description: getField(extractions, 'legal_description') ?? `Lot and parcel at ${street1}, ${city}, NY ${postalCode}`,
+        legal_description: getField(extractions, 'legal_description') ?? `Lot and parcel at ${street1}, ${city}, ${propertyState} ${postalCode}`,
         has_public_road_access: getBool(extractions, 'has_public_road_access'),
         delivered_vacant: getBool(extractions, 'delivered_vacant'),
         as_is_sale: getBool(extractions, 'as_is_sale'),
       } as never)
       .select('id')
       .single();
+    if (propInsertErr) {
+      console.error('Property insert failed:', propInsertErr.message, {
+        street_1: street1, city, state: propertyState, postal_code: postalCode,
+      });
+    }
     propertyId = (insertedProperty as { id: string } | null)?.id ?? '';
   }
 
@@ -201,13 +237,13 @@ export async function POST(
     : 'certified_check';
 
   const contractInsert: ContractInsert = {
-    contract_number: generateContractNumber(),
+    contract_number: generateContractNumber(propertyState),
     property_id: propertyId,
     seller_id: sellerId,
     purchaser_id: purchaserId,
     status: 'draft',
     contract_date: getField(extractions, 'contract_date') ?? new Date().toISOString().split('T')[0],
-    closing_date: getField(extractions, 'closing_date'),
+    closing_date: getField(extractions, 'closing_date') ?? getField(extractions, 'settlement_date'),
     commitment_date: getField(extractions, 'commitment_date'),
     purchase_price: purchasePrice || 100000,
     downpayment_amount: downpayment,
@@ -278,7 +314,7 @@ export async function POST(
           last_name: escrowAgent.split(' ').slice(1).join(' ') || 'Escrow',
           email: `escrow.${Date.now()}@pending.estora.app`,
           city: city,
-          state: 'NY',
+          state: propertyState,
         } as never)
         .select('id')
         .single();
@@ -311,7 +347,8 @@ export async function POST(
   }
 
   try {
-    await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date, 'ny_residential', extractedDates);
+    const timelineTemplate = isNY ? 'ny_residential' : 'pa_residential';
+    await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date, timelineTemplate, extractedDates);
     // Auto-complete "Execute contract" since the AOS was already signed when uploaded
     await serviceClient
       .from('tasks')

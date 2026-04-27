@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, createRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ArrowLeft,
   Loader2,
@@ -11,6 +12,8 @@ import {
   Clock,
   MoreHorizontal,
   Keyboard,
+  Upload,
+  FileText,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { AGREEMENT_SECTIONS } from '@/lib/agreement-schema';
@@ -294,6 +297,17 @@ export default function AgreementWorkspacePage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(false);
 
+  // Document picker state
+  type DocRow = { id: string; filename: string; doc_type: string | null; status: string };
+  type ExtractionRow = { id: string; field_name: string; field_value: string | null; confidence: number | null; page_ref: number | null };
+  const [documents, setDocuments] = useState<DocRow[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [docUploading, setDocUploading] = useState(false);
+  const [docUploadType, setDocUploadType] = useState<'disclosure' | 'addendum' | 'other'>('other');
+  const [selectedDocExtractions, setSelectedDocExtractions] = useState<ExtractionRow[]>([]);
+  const [extractionsLoading, setExtractionsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -349,11 +363,64 @@ export default function AgreementWorkspacePage() {
       setFormValues(flat);
       setLastSaved(flat);
       setLastSavedAt(contractData.updated_at);
+
+      // Load all documents for this contract
+      const { data: docsData } = await supabase
+        .from('documents')
+        .select('id, filename, doc_type, status')
+        .eq('contract_id', contractId)
+        .order('created_at', { ascending: true });
+      setDocuments((docsData ?? []) as DocRow[]);
+
       setPageState('ready');
     }
 
     load();
   }, [contractId]);
+
+  // Load extractions when a non-AOS document is selected
+  useEffect(() => {
+    if (!selectedDocId) {
+      setSelectedDocExtractions([]);
+      return;
+    }
+    const supabase = createClient();
+    setExtractionsLoading(true);
+    supabase
+      .from('extractions')
+      .select('id, field_name, field_value, confidence, page_ref')
+      .eq('document_id', selectedDocId)
+      .order('field_name', { ascending: true })
+      .then(({ data }) => {
+        setSelectedDocExtractions((data ?? []) as ExtractionRow[]);
+        setExtractionsLoading(false);
+      });
+  }, [selectedDocId]);
+
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !contract) return;
+    setDocUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('contract_id', contract.id);
+      fd.append('doc_type', docUploadType);
+      const res = await fetch('/api/documents/upload', { method: 'POST', body: fd });
+      if (res.ok) {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('documents')
+          .select('id, filename, doc_type, status')
+          .eq('contract_id', contractId)
+          .order('created_at', { ascending: true });
+        setDocuments((data ?? []) as DocRow[]);
+      }
+    } finally {
+      setDocUploading(false);
+    }
+  }
 
   const issues = useMemo(() => runValidation(formValues), [formValues]);
 
@@ -543,7 +610,7 @@ export default function AgreementWorkspacePage() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push(`/dashboard/transactions/${contractId}`)}
               className="text-secondary hover:text-primary p-1 flex-shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -593,15 +660,174 @@ export default function AgreementWorkspacePage() {
         </div>
       )}
 
+      {/* ── Document Picker Bar ──────────────────── */}
+      <div className="border-b border-border bg-surface-raised px-4 lg:px-6">
+        <div className="flex items-center gap-1 overflow-x-auto py-2" style={{ scrollbarWidth: 'none' }}>
+          {/* Agreement of Sale tab — always first */}
+          <button
+            onClick={() => setSelectedDocId(null)}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              selectedDocId === null
+                ? 'bg-navy text-white'
+                : 'text-secondary hover:text-primary hover:bg-surface-sunken'
+            }`}
+          >
+            <FileText className="w-3 h-3" />
+            Agreement of Sale
+          </button>
+
+          {/* Other uploaded document tabs */}
+          {documents
+            .filter((d) => d.id !== contract.source_document_id)
+            .map((doc) => {
+              const typeLabel =
+                doc.doc_type === 'disclosure' ? 'Disclosure'
+                : doc.doc_type === 'addendum' ? 'Addendum'
+                : 'Document';
+              const shortName = doc.filename.replace(/\.pdf$/i, '').slice(0, 24);
+              return (
+                <button
+                  key={doc.id}
+                  onClick={() => setSelectedDocId(doc.id)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors max-w-[200px] ${
+                    selectedDocId === doc.id
+                      ? 'bg-navy text-white'
+                      : 'text-secondary hover:text-primary hover:bg-surface-sunken'
+                  }`}
+                  title={doc.filename}
+                >
+                  <FileText className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{typeLabel} · {shortName}</span>
+                </button>
+              );
+            })}
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-border mx-1 flex-shrink-0" />
+
+          {/* Upload type selector + button */}
+          <select
+            value={docUploadType}
+            onChange={(e) => setDocUploadType(e.target.value as 'disclosure' | 'addendum' | 'other')}
+            className="field-input text-xs py-1 h-7 max-w-[140px] flex-shrink-0"
+          >
+            <option value="other">Other document</option>
+            <option value="disclosure">Disclosure</option>
+            <option value="addendum">Addendum</option>
+          </select>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={handleDocUpload}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={docUploading}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-secondary hover:text-primary hover:bg-surface-sunken rounded-md transition-colors disabled:opacity-50"
+          >
+            {docUploading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5" />
+            )}
+            Upload PDF
+          </button>
+        </div>
+      </div>
+
       {/* ── Security banners ──────────────────────── */}
-      {!isLocked && (
+      {!isLocked && selectedDocId === null && (
         <div className="px-4 lg:px-6 pt-2 space-y-2">
           <ClosingProximityFlag closingDate={contract.closing_date} />
           {activeSection === 'escrow' && <WireFraudBanner variant="page" />}
         </div>
       )}
 
-      {/* ── Tri-panel Layout ───────────────────────── */}
+      {/* ── Non-AOS Document Extraction Viewer ─────── */}
+      {selectedDocId !== null && (() => {
+        const doc = documents.find((d) => d.id === selectedDocId);
+        return (
+          <div className="flex-1 px-4 lg:px-8 py-6 max-w-3xl mx-auto w-full">
+            {/* Doc header */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="w-4 h-4 text-secondary" />
+                <h2 className="text-base font-medium text-navy">{doc?.filename ?? 'Document'}</h2>
+                {doc?.status && (
+                  <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${
+                    doc.status === 'done' ? 'bg-green-50 text-success' :
+                    doc.status === 'processing' ? 'bg-amber-50 text-warning' :
+                    doc.status === 'failed' ? 'bg-red-50 text-error' :
+                    'bg-surface-sunken text-secondary'
+                  }`}>
+                    {doc.status}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-secondary">
+                {doc?.doc_type === 'disclosure' ? 'Disclosure document'
+                  : doc?.doc_type === 'addendum' ? 'Addendum'
+                  : 'Uploaded document'} · Extracted fields below
+              </p>
+              <p className="text-xs text-secondary mt-2">
+                To view the full extraction review for this document,{' '}
+                <Link href={`/dashboard/documents/${selectedDocId}`} className="text-navy underline underline-offset-2 hover:text-navy-light">
+                  open the extraction page →
+                </Link>
+              </p>
+            </div>
+
+            {/* Extracted fields */}
+            {extractionsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-secondary">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading extracted fields…
+              </div>
+            ) : selectedDocExtractions.length === 0 ? (
+              <div className="card text-center py-10">
+                <p className="text-sm text-secondary">No fields extracted from this document yet.</p>
+                {doc?.status === 'processing' && (
+                  <p className="text-xs text-secondary mt-1">Document is still processing — check back shortly.</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {selectedDocExtractions.map((ext) => (
+                  <div key={ext.id} className="card !py-3 !px-4 flex items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-mono uppercase text-secondary tracking-wider mb-0.5">
+                        {ext.field_name.replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-sm text-primary font-medium">
+                        {ext.field_value ?? <span className="text-disabled italic">—</span>}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      {ext.confidence !== null && (
+                        <span className={`text-[10px] font-mono ${
+                          ext.confidence >= 0.8 ? 'text-success' :
+                          ext.confidence >= 0.5 ? 'text-warning' : 'text-error'
+                        }`}>
+                          {Math.round(ext.confidence * 100)}%
+                        </span>
+                      )}
+                      {ext.page_ref !== null && (
+                        <p className="text-[10px] text-disabled font-mono">p.{ext.page_ref}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Tri-panel Layout (AOS only) ────────────── */}
+      {selectedDocId === null && (
+      <>
       <div className="flex min-h-[calc(100vh-120px)]">
         {/* Left: Section Navigator */}
         <aside
@@ -659,6 +885,8 @@ export default function AgreementWorkspacePage() {
         lastSavedAt={lastSavedAt}
         lastSavedBy={null}
       />
+      </>
+      )}
 
       {/* ── Keyboard shortcuts modal ───────────────── */}
       {showShortcuts && (

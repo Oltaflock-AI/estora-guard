@@ -120,27 +120,19 @@ describe('LlamaParse Integration', () => {
   });
 
   function mockLlamaParseSuccess(markdown: string = SAMPLE_MARKDOWN) {
-    let callCount = 0;
     global.fetch = vi.fn(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url.toString();
 
-      if (urlStr.includes('/v1/files/')) {
-        return new Response(JSON.stringify({ id: 'file-123' }), { status: 200 });
+      if (urlStr.includes('/v1/parsing/upload')) {
+        return new Response(JSON.stringify({ id: 'job-456' }), { status: 200 });
       }
 
-      if (urlStr.includes('/v2/parse/') && urlStr.includes('/result/markdown')) {
+      if (urlStr.includes('/v1/parsing/job/') && urlStr.includes('/result/markdown')) {
         return new Response(JSON.stringify({ markdown }), { status: 200 });
       }
 
-      if (urlStr.includes('/v2/parse/') && !urlStr.includes('parse-')) {
-        // Could be POST (create job) or GET (poll)
-        callCount++;
-        if (callCount <= 1) {
-          // POST create job
-          return new Response(JSON.stringify({ id: 'job-456' }), { status: 200 });
-        }
-        // GET poll — return completed
-        return new Response(JSON.stringify({ status: 'completed' }), { status: 200 });
+      if (urlStr.includes('/v1/parsing/job/')) {
+        return new Response(JSON.stringify({ status: 'SUCCESS' }), { status: 200 });
       }
 
       return new Response('Not found', { status: 404 });
@@ -194,21 +186,16 @@ describe('LlamaParse Integration', () => {
   it('parsePdfWithLlamaParse throws on poll timeout', async () => {
     const { parsePdfWithLlamaParse, LlamaParseError } = await import('@/lib/services/document-intelligence');
 
-    let callCount = 0;
     global.fetch = vi.fn(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url.toString();
 
-      if (urlStr.includes('/v1/files/')) {
-        return new Response(JSON.stringify({ id: 'file-123' }), { status: 200 });
+      if (urlStr.includes('/v1/parsing/upload')) {
+        return new Response(JSON.stringify({ id: 'job-456' }), { status: 200 });
       }
 
-      if (urlStr.includes('/v2/parse/')) {
-        callCount++;
-        if (callCount <= 1) {
-          return new Response(JSON.stringify({ id: 'job-456' }), { status: 200 });
-        }
-        // Always return processing — never complete
-        return new Response(JSON.stringify({ status: 'processing' }), { status: 200 });
+      if (urlStr.includes('/v1/parsing/job/')) {
+        // Always return PENDING — never complete
+        return new Response(JSON.stringify({ status: 'PENDING' }), { status: 200 });
       }
 
       return new Response('Not found', { status: 404 });

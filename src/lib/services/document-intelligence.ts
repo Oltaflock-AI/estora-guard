@@ -28,13 +28,39 @@ export interface ExtractionResult {
   riskFlags: RiskFlagResult[];
 }
 
-const TEXT_EXTRACTION_PROMPT = `You are an expert real estate attorney analyzing a New York Residential Contract of Sale. Extract all structured data from the contract text provided below.
+const FIELD_LIST = `**Field names to extract (include all that are present):**
+
+Party fields: seller_first_name, seller_last_name, seller_email, seller_phone, seller_city, seller_state, seller_masked_tax_id, purchaser_first_name, purchaser_last_name, purchaser_email, purchaser_phone, purchaser_city, purchaser_state, purchaser_masked_tax_id, seller_attorney_name, purchaser_attorney_name, seller_broker_name, buyer_broker_name, brokerage_name
+
+Property fields: street_1, street_2, city, state, county, municipality, postal_code, school_district, tax_parcel_id, mls_number, zoning, property_type, bedrooms, bathrooms, year_built, legal_description, has_public_road_access, delivered_vacant, as_is_sale
+
+Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, acceptable_funds, seller_assist_amount, pa_realty_transfer_tax, local_transfer_tax
+
+Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, mortgage_term_years, escrow_required, commitment_received
+
+Date fields: contract_date, closing_date, settlement_date, commitment_date, inspection_deadline, inspection_contingency_days, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
+
+Settlement fields: settlement_location, settlement_time
+
+Condition fields: subject_to_mortgage_contingency, seller_has_right_to_sell, seller_not_foreign_person, no_undisclosed_abatements, title_insurable, premises_broom_clean, systems_in_working_order, smoke_detector_affidavit_required, certificate_of_occupancy_required, firpta_cert_required
+
+Inspection election fields (PA): home_inspection_elected, wood_destroying_insect_inspection_elected, radon_inspection_elected, mold_inspection_elected, water_quality_inspection_elected, septic_inspection_elected, lead_based_paint_inspection_elected, boundary_survey_elected
+
+Disclosure / utility fields (PA): water_source, sewage_disposal, seller_disclosure_attached, lead_based_paint_disclosure_attached, radon_mitigation_present, megan_law_notice_acknowledged, governing_law_state
+
+Escrow fields: escrow_agent_name, bank_name, account_reference, amount_held, segregated_account
+
+Title fields: title_company_name
+
+**State-code rule:** \`state\`, \`seller_state\`, \`purchaser_state\`, and \`governing_law_state\` MUST be the two-letter USPS code (e.g., "PA", "NY", "NJ"). Never spell out the state name. If the document repeatedly references "Pennsylvania" or "Commonwealth of Pennsylvania", the value is "PA".`;
+
+const PROMPT_PREAMBLE = `You are an expert real estate attorney analyzing a residential real estate document. The document may be a Pennsylvania Standard Agreement for the Sale of Real Estate (PAR Form ASR), a New York Residential Contract of Sale, a Seller's Property Disclosure, a Lead-Based Paint Disclosure, or a related addendum. Identify the document type from its contents and extract every field that is present.
 
 Return a JSON object with exactly two keys:
 
 1. "fields": an array of objects, each with:
    - "fieldName": one of the field names listed below
-   - "fieldValue": the extracted value as a string (dates as YYYY-MM-DD, currency as plain numbers without $ or commas, booleans as "true"/"false")
+   - "fieldValue": the extracted value as a string (dates as YYYY-MM-DD, currency as plain numbers without $ or commas, booleans as "true"/"false", state as two-letter USPS code)
    - "confidence": a number 0.0-1.0 reflecting extraction certainty
    - "pageRef": page number if identifiable, otherwise null
 
@@ -42,61 +68,19 @@ Return a JSON object with exactly two keys:
    - "flagType": one of "tight_deadline", "missing_clause", "unusual_condition", "unclear_language", "material_defect"
    - "severity": "low", "medium", or "high"
    - "title": short title (max 80 chars)
-   - "explanation": 1-2 sentence explanation
+   - "explanation": 1-2 sentence explanation`;
 
-**Field names to extract (include all that are present):**
+const TEXT_EXTRACTION_PROMPT = `${PROMPT_PREAMBLE}
 
-Party fields: seller_first_name, seller_last_name, seller_email, seller_phone, seller_city, seller_masked_tax_id, purchaser_first_name, purchaser_last_name, purchaser_email, purchaser_phone, purchaser_city, purchaser_masked_tax_id, seller_attorney_name, purchaser_attorney_name
-
-Property fields: street_1, street_2, city, county, postal_code, property_type, bedrooms, bathrooms, year_built, legal_description, has_public_road_access, delivered_vacant, as_is_sale
-
-Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, acceptable_funds
-
-Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, escrow_required, commitment_received
-
-Date fields: contract_date, closing_date, commitment_date, inspection_deadline, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
-
-Condition fields: subject_to_mortgage_contingency, seller_has_right_to_sell, seller_not_foreign_person, no_undisclosed_abatements, title_insurable, premises_broom_clean, systems_in_working_order, smoke_detector_affidavit_required, certificate_of_occupancy_required, firpta_cert_required
-
-Escrow fields: escrow_agent_name, bank_name, account_reference, amount_held, segregated_account
-
-Title fields: title_company_name
+${FIELD_LIST}
 
 Return ONLY valid JSON. No markdown fences, no commentary.`;
 
-const EXTRACTION_PROMPT = `You are an expert real estate attorney analyzing a New York Residential Contract of Sale. Extract all structured data from the attached PDF document.
+const EXTRACTION_PROMPT = `${PROMPT_PREAMBLE}
 
-Return a JSON object with exactly two keys:
+The document is provided as a PDF attachment.
 
-1. "fields": an array of objects, each with:
-   - "fieldName": one of the field names listed below
-   - "fieldValue": the extracted value as a string (dates as YYYY-MM-DD, currency as plain numbers without $ or commas, booleans as "true"/"false")
-   - "confidence": a number 0.0-1.0 reflecting extraction certainty
-   - "pageRef": page number if identifiable, otherwise null
-
-2. "riskFlags": an array of objects, each with:
-   - "flagType": one of "tight_deadline", "missing_clause", "unusual_condition", "unclear_language", "material_defect"
-   - "severity": "low", "medium", or "high"
-   - "title": short title (max 80 chars)
-   - "explanation": 1-2 sentence explanation
-
-**Field names to extract (include all that are present):**
-
-Party fields: seller_first_name, seller_last_name, seller_email, seller_phone, seller_city, seller_masked_tax_id, purchaser_first_name, purchaser_last_name, purchaser_email, purchaser_phone, purchaser_city, purchaser_masked_tax_id, seller_attorney_name, purchaser_attorney_name
-
-Property fields: street_1, street_2, city, county, postal_code, property_type, bedrooms, bathrooms, year_built, legal_description, has_public_road_access, delivered_vacant, as_is_sale
-
-Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, acceptable_funds
-
-Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, escrow_required, commitment_received
-
-Date fields: contract_date, closing_date, commitment_date, inspection_deadline, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
-
-Condition fields: subject_to_mortgage_contingency, seller_has_right_to_sell, seller_not_foreign_person, no_undisclosed_abatements, title_insurable, premises_broom_clean, systems_in_working_order, smoke_detector_affidavit_required, certificate_of_occupancy_required, firpta_cert_required
-
-Escrow fields: escrow_agent_name, bank_name, account_reference, amount_held, segregated_account
-
-Title fields: title_company_name
+${FIELD_LIST}
 
 Return ONLY valid JSON. No markdown fences, no commentary.`;
 
@@ -147,12 +131,13 @@ export async function parsePdfWithLlamaParse(pdfBuffer: Buffer): Promise<string>
 
   const headers = { Authorization: `Bearer ${apiKey}` };
 
-  // Step 1: Upload file
+  // Step 1: Upload file + create parse job in a single call
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(pdfBuffer)], { type: 'application/pdf' });
   formData.append('file', blob, 'contract.pdf');
+  formData.append('result_type', 'markdown');
 
-  const uploadRes = await fetch(`${LLAMAPARSE_BASE_URL}/v1/files/`, {
+  const uploadRes = await fetch(`${LLAMAPARSE_BASE_URL}/v1/parsing/upload`, {
     method: 'POST',
     headers,
     body: formData,
@@ -160,38 +145,20 @@ export async function parsePdfWithLlamaParse(pdfBuffer: Buffer): Promise<string>
 
   if (!uploadRes.ok) {
     const body = await uploadRes.text().catch(() => '');
-    throw new LlamaParseError(`File upload failed (${uploadRes.status}): ${body}`);
+    throw new LlamaParseError(`Parse upload failed (${uploadRes.status}): ${body}`);
   }
 
   const uploadData = (await uploadRes.json()) as { id: string };
-  const fileId = uploadData.id;
-  if (!fileId) {
-    throw new LlamaParseError('LlamaParse upload did not return a file_id.');
-  }
-
-  // Step 2: Create parse job
-  const parseRes = await fetch(`${LLAMAPARSE_BASE_URL}/v2/parse/`, {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ file_id: fileId, config: { result_type: 'markdown' } }),
-  });
-
-  if (!parseRes.ok) {
-    const body = await parseRes.text().catch(() => '');
-    throw new LlamaParseError(`Parse job creation failed (${parseRes.status}): ${body}`);
-  }
-
-  const parseData = (await parseRes.json()) as { id: string };
-  const jobId = parseData.id;
+  const jobId = uploadData.id;
   if (!jobId) {
-    throw new LlamaParseError('LlamaParse did not return a job_id.');
+    throw new LlamaParseError('LlamaParse upload did not return a job_id.');
   }
 
-  // Step 3: Poll for completion
+  // Step 2: Poll for completion
   for (let poll = 0; poll < LLAMAPARSE_MAX_POLLS; poll++) {
     await sleep(LLAMAPARSE_POLL_INTERVAL_MS);
 
-    const statusRes = await fetch(`${LLAMAPARSE_BASE_URL}/v2/parse/${jobId}`, {
+    const statusRes = await fetch(`${LLAMAPARSE_BASE_URL}/v1/parsing/job/${jobId}`, {
       headers,
     });
 
@@ -200,11 +167,12 @@ export async function parsePdfWithLlamaParse(pdfBuffer: Buffer): Promise<string>
     }
 
     const statusData = (await statusRes.json()) as { status: string };
+    const status = statusData.status?.toUpperCase();
 
-    if (statusData.status === 'completed') {
-      // Step 4: Get result
+    if (status === 'SUCCESS' || status === 'COMPLETED') {
+      // Step 3: Get markdown result
       const resultRes = await fetch(
-        `${LLAMAPARSE_BASE_URL}/v2/parse/${jobId}/result/markdown`,
+        `${LLAMAPARSE_BASE_URL}/v1/parsing/job/${jobId}/result/markdown`,
         { headers }
       );
 
@@ -216,7 +184,7 @@ export async function parsePdfWithLlamaParse(pdfBuffer: Buffer): Promise<string>
       return resultData.markdown ?? '';
     }
 
-    if (statusData.status === 'failed' || statusData.status === 'error') {
+    if (status === 'ERROR' || status === 'FAILED' || status === 'CANCELLED') {
       throw new LlamaParseError(`Parse job failed with status: ${statusData.status}`);
     }
   }

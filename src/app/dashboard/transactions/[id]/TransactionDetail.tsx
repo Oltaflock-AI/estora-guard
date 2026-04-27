@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
-  FileText,
+  Paperclip,
   MapPin,
   Users,
   Building,
   Banknote,
-  Upload,
-  Loader2,
   Bot,
 } from 'lucide-react';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -114,12 +112,6 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
   const router = useRouter();
   const [health, setHealth] = useState<HealthData>(data.health);
   const [perspective, setPerspective] = useState<'buyer' | 'seller'>('buyer');
-  const [uploadDocType, setUploadDocType] = useState<
-    'disclosure' | 'addendum' | 'other'
-  >('other');
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const key = `estora.dealPerspective.${contract.id}`;
@@ -132,32 +124,6 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
   function handlePerspectiveChange(next: 'buyer' | 'seller') {
     setPerspective(next);
     localStorage.setItem(`estora.dealPerspective.${contract.id}`, next);
-  }
-
-  async function handleTransactionDocumentUpload(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('contract_id', contract.id);
-      fd.append('doc_type', uploadDocType);
-      const res = await fetch('/api/documents/upload', { method: 'POST', body: fd });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        const msg = err?.error ?? 'Upload failed';
-        setUploadError(msg);
-        return;
-      }
-      router.refresh();
-    } finally {
-      setUploading(false);
-    }
   }
 
   useRealtime({
@@ -278,8 +244,8 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
                 href={`/dashboard/agreements/${contract.id}`}
                 className="btn-primary gap-2 justify-center"
               >
-                <FileText className="w-4 h-4" />
-                Edit Agreement
+                <Paperclip className="w-4 h-4" />
+                Files
               </Link>
             </div>
           </div>
@@ -478,90 +444,6 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
             </div>
           </div>
 
-          <div className="card">
-            <h3 className="section-header mb-3">Transaction documents</h3>
-            <p className="text-xs text-secondary mb-3">
-              Agreement of Sale and other files for this deal. Upload PDFs to add
-              disclosures, addenda, or other documents.
-            </p>
-            {documents.length === 0 ? (
-              <p className="text-sm text-secondary">No documents linked yet.</p>
-            ) : (
-              <ul className="space-y-2 mb-4">
-                {documents.map((doc) => (
-                  <li
-                    key={doc.id}
-                    className="flex items-center justify-between gap-2 text-sm border-b border-border pb-2 last:border-0 last:pb-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/dashboard/documents/${doc.id}`}
-                        className="text-navy hover:text-navy-light truncate block font-medium"
-                      >
-                        {doc.filename}
-                      </Link>
-                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-mono uppercase text-secondary">
-                          {doc.doc_type?.replace(/_/g, ' ') ?? 'document'}
-                        </span>
-                        {doc.id === contract.source_document_id && (
-                          <span className="text-[10px] font-mono uppercase text-gold">
-                            Agreement of Sale
-                          </span>
-                        )}
-                        <span className="text-[10px] font-mono text-secondary">
-                          {doc.status}
-                        </span>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-              <label className="text-xs text-secondary whitespace-nowrap">
-                Document type
-              </label>
-              <select
-                value={uploadDocType}
-                onChange={(e) =>
-                  setUploadDocType(
-                    e.target.value as 'disclosure' | 'addendum' | 'other'
-                  )
-                }
-                className="field-input text-sm py-1.5 max-w-[200px]"
-              >
-                <option value="other">Other</option>
-                <option value="disclosure">Disclosure</option>
-                <option value="addendum">Addendum</option>
-              </select>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handleTransactionDocumentUpload}
-            />
-            <button
-              type="button"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="btn-secondary gap-2 mt-3 w-full sm:w-auto justify-center"
-            >
-              {uploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4" />
-              )}
-              {uploading ? 'Uploading…' : 'Upload PDF'}
-            </button>
-            {uploadError && (
-              <p className="text-xs text-error mt-2" role="alert">
-                {uploadError}
-              </p>
-            )}
-          </div>
         </div>
 
         {/* Column 3: Tasks + Risk Flags */}
