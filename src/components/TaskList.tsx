@@ -9,6 +9,7 @@ import type { Task } from '@/lib/types';
 interface TaskListProps {
   tasks: Task[];
   contractId: string;
+  perspective?: 'buyer' | 'seller';
   onHealthUpdate?: (health: {
     score: number;
     status: string;
@@ -107,6 +108,7 @@ function TaskCheckbox({
 export default function TaskList({
   tasks,
   contractId,
+  perspective,
   onHealthUpdate,
 }: TaskListProps) {
   const [optimisticTasks, setOptimisticTasks] = useState<Map<string, string>>(
@@ -116,11 +118,16 @@ export default function TaskList({
 
   const effectiveTasks = useMemo(
     () =>
-      tasks.map((t) => ({
-        ...t,
-        status: (optimisticTasks.get(t.id) ?? t.status) as Task['status'],
-      })),
-    [tasks, optimisticTasks]
+      tasks
+        .filter((t) => {
+          if (!perspective) return true;
+          return t.audience === perspective || t.audience === 'both';
+        })
+        .map((t) => ({
+          ...t,
+          status: (optimisticTasks.get(t.id) ?? t.status) as Task['status'],
+        })),
+    [tasks, optimisticTasks, perspective]
   );
 
   const grouped = useMemo(() => {
@@ -198,10 +205,12 @@ export default function TaskList({
     [contractId, onHealthUpdate]
   );
 
-  if (tasks.length === 0) {
+  if (effectiveTasks.length === 0) {
     return (
       <div className="py-8 text-center">
-        <p className="text-sm text-secondary italic">No tasks yet</p>
+        <p className="text-sm text-secondary italic">
+          {perspective ? `No ${perspective}-side tasks` : 'No tasks yet'}
+        </p>
       </div>
     );
   }

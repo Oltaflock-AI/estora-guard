@@ -19,6 +19,8 @@ export interface RiskFlagResult {
   severity: 'low' | 'medium' | 'high';
   title: string;
   explanation: string;
+  /** Which side of the deal this risk threatens. Defaults to 'both' when Claude omits the field. */
+  audience: 'buyer' | 'seller' | 'both';
 }
 
 export interface ExtractionResult {
@@ -68,7 +70,8 @@ Return a JSON object with exactly two keys:
    - "flagType": one of "tight_deadline", "missing_clause", "unusual_condition", "unclear_language", "material_defect"
    - "severity": "low", "medium", or "high"
    - "title": short title (max 80 chars)
-   - "explanation": 1-2 sentence explanation`;
+   - "explanation": 1-2 sentence explanation
+   - "audience": which side of the deal this risk threatens — one of "buyer", "seller", or "both". Pick "buyer" when the risk hurts the purchaser (e.g., tight financing window, hidden defect they'll inherit, wire fraud on deposit). Pick "seller" when the risk hurts the seller (e.g., disclosure-law liability, FIRPTA exposure, buyer default, broker commission dispute). Pick "both" only when the consequence falls on both parties roughly equally. Default to "both" if uncertain.`;
 
 const TEXT_EXTRACTION_PROMPT = `${PROMPT_PREAMBLE}
 

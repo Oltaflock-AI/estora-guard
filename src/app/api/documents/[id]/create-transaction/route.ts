@@ -277,6 +277,15 @@ export async function POST(
 
   const contract = contractRow as Database['public']['Tables']['contracts']['Row'];
 
+  // Backfill risk_flags.contract_id for flags inserted during the AOS upload
+  // (the contract didn't exist yet at that moment). This lets the transaction
+  // page query risk_flags by contract_id directly.
+  await serviceClient
+    .from('risk_flags')
+    .update({ contract_id: contract.id } as never)
+    .eq('document_id', documentId)
+    .is('contract_id', null);
+
   await serviceClient
     .from('documents')
     .update({ contract_id: contract.id } as never)

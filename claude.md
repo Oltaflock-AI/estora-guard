@@ -181,29 +181,12 @@ Files marked ★ GUARD are new. Everything else already exists.
 | `profiles`                      | User profiles                                        |
 | `organizations`                 | Multi-tenant orgs                                    |
 | `memberships`                   | Org membership + roles                               |
+| `agent_receipts`                | Append-only log of every agent action (allowed / denied / approval_required) |
+| `waitlist_signups`              | Public landing-page email capture (waitlist mode)    |
 
-### New table (run migration before building agent routes)
+### After any schema change
 
-```sql
-CREATE TABLE agent_receipts (
-  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  transaction_id  text,
-  user_id         uuid        REFERENCES profiles(id),
-  role            text        NOT NULL,
-  request         text        NOT NULL,
-  skill_requested text        NOT NULL,
-  decision        text        NOT NULL CHECK (decision IN ('allowed','denied','approval_required')),
-  reason          text,
-  approved_by     uuid        REFERENCES profiles(id),
-  attack_case_id  text,
-  created_at      timestamptz DEFAULT now()
-);
-
-CREATE INDEX agent_receipts_transaction_id_idx ON agent_receipts(transaction_id);
-CREATE INDEX agent_receipts_created_at_idx ON agent_receipts(created_at DESC);
-```
-
-Types: regenerate with `npm run types:supabase` after running the migration.
+Run `supabase db push` to apply, then `npm run types:supabase` to regenerate `database.types.ts`. Don't hand-edit `database.types.ts`.
 
 ---
 
@@ -254,12 +237,26 @@ Same model used everywhere. `draft_next_actions` is the only skill that calls th
 
 ### Document parsing pipeline
 
-PDF extraction uses a two-step pipeline with automatic fallback:
+PDF extraction is a two-stage pipeline with automatic fallback:
 
-1. **LlamaParse** converts the PDF to clean markdown text
+1. **LlamaParse** (single-call `/api/v1/parsing/upload` → poll → fetch markdown) converts the PDF to clean markdown text
 2. **Claude** extracts structured fields and risk flags from the markdown
 
 If LlamaParse fails or returns insufficient text (<50 chars), the system falls back to sending the raw PDF directly to Claude. All parsing logic lives in `lib/services/document-intelligence.ts`. No other file calls the Anthropic API except `lib/skills/draft-next-actions.ts`.
+
+### Jurisdiction support
+
+**The product is PA-only right now.** Pennsylvania (PA) is the only supported jurisdiction — extraction prompts, timeline templates, contract-number prefixes, and demo content all target the PAR Form ASR (Standard Agreement for the Sale of Real Estate).
+
+Concretely, this means:
+- Default state when extraction is silent → `'PA'` (`normalizeStateCode()` in `app/api/documents/[id]/create-transaction/route.ts`)
+- Active timeline template → `pa_residential` (`lib/services/timeline-service.ts`)
+- Contract number prefix → `PAAOS-`
+- Default city / county / postal fallbacks → `Lansdale` / `Montgomery` / `19446`
+
+A `ny_residential` template and a `NYRCS-` branch still exist in code as **legacy scaffolding** from the prior NY-first version. They are not part of the current product and should not be relied on or maintained. Don't extend them; if you touch them, ask first.
+
+DB-level: the `state` column on `people` and `properties` accepts any 2-letter USPS code (`^[A-Z]{2}$` check), so the schema doesn't block multi-state work — but there's no product use case for non-PA values today.
 
 ### Audit trail
 
@@ -407,12 +404,31 @@ If any link in either path is broken, stop and fix it before anything else.
 
 ---
 
+## Working rules — read before editing anything
+
+These two rules govern every change in this repo. They override speed, ambition, or "I think this should work."
+
+### Rule 1 — The 95% rule
+
+Only move forward on a change when you are roughly 95% sure it is correct for *this* repo and will not regress something already working. Below that bar, the move is to gather more context — read the callers, trace the data, run a small repro, check the actual schema, look at what tests exist — until you cross the bar, or stop and propose a safer approach. Guessing is not a strategy. When the requirement is ambiguous, prefer additive changes (new column, new function, new component) over risky refactors that touch existing behavior.
+
+### Rule 2 — Plan, execute, test, repeat
+
+Work proceeds one verified step at a time, never in a giant batch:
+
+1. **Plan** — write down what you're about to do and why, in plain language. Get alignment if the change is non-trivial.
+2. **Execute** — make the change. Keep it scoped to that step. Don't bundle in unrelated cleanups.
+3. **Test** — actually run it. `npx tsc --noEmit` for types, `npm test -- --run` for unit tests, the dev server + a real action in the browser for UI changes. If it doesn't pass, the step isn't done.
+4. **Then plan the next step.**
+
+Skipping the test phase to "save time" is the fastest way to break the demo critical paths. A green test step earns the right to start the next plan.
+
+---
+
 ## Change confidence and shipping discipline
 
-### When to edit the codebase
+The two rules above are the law. The notes here are reminders.
 
-Do not land a change unless you are **at least ~95% sure** it is correct for this repo and will not regress existing behavior. If you are below that bar, gather more context (read callers, run a quick repro, check types) until you cross it—or stop and propose a safer approach instead of guessing. For Estora Guard specifically, prefer additive changes over risky refactors when the requirement is ambiguous.
-
-### Verify before commit or deploy
-
-After you implement something, **exercise it locally** before you treat the work as done: run the dev server or the relevant script, run **tests** (`npm test`) when they apply, and fix failures. Only **commit** or **deploy** once that verification passes (or you have a documented, intentional exception). Shipping or committing untested edits is avoided.
+- After you implement something, **exercise it locally** before you treat the work as done. UI changes need a browser check, not just a passing type compile.
+- Only **commit** or **deploy** once verification passes — or document the intentional exception.
+- Shipping untested edits is the failure mode this repo cares about most.

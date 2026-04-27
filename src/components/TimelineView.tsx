@@ -6,6 +6,7 @@ import type { TimelineItem } from '@/lib/types';
 
 interface TimelineViewProps {
   items: TimelineItem[];
+  perspective?: 'buyer' | 'seller';
 }
 
 type DotStatus = 'complete' | 'overdue' | 'upcoming';
@@ -45,10 +46,16 @@ function Dot({ status, isClosing }: { status: DotStatus; isClosing: boolean }) {
   );
 }
 
-export default function TimelineView({ items }: TimelineViewProps) {
+export default function TimelineView({ items, perspective }: TimelineViewProps) {
   const sorted = useMemo(
-    () => [...items].sort((a, b) => a.sort_order - b.sort_order),
-    [items]
+    () =>
+      [...items]
+        .filter((item) => {
+          if (!perspective) return true;
+          return item.audience === perspective || item.audience === 'both';
+        })
+        .sort((a, b) => a.sort_order - b.sort_order),
+    [items, perspective]
   );
 
   if (sorted.length === 0) {

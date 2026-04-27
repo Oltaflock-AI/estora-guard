@@ -625,10 +625,12 @@ export interface Database {
         Row: {
           id: string;
           document_id: string;
+          contract_id: string | null;
           flag_type: 'tight_deadline' | 'missing_clause' | 'unusual_condition' | 'unclear_language' | 'material_defect';
           severity: 'low' | 'medium' | 'high';
           title: string;
           explanation: string;
+          audience: 'buyer' | 'seller' | 'both';
           acknowledged: boolean;
           acknowledged_by: string | null;
           acknowledged_at: string | null;
@@ -638,10 +640,12 @@ export interface Database {
         Insert: {
           id?: string;
           document_id: string;
+          contract_id?: string | null;
           flag_type: 'tight_deadline' | 'missing_clause' | 'unusual_condition' | 'unclear_language' | 'material_defect';
           severity: 'low' | 'medium' | 'high';
           title: string;
           explanation: string;
+          audience?: 'buyer' | 'seller' | 'both';
           acknowledged?: boolean;
           acknowledged_by?: string | null;
           acknowledged_at?: string | null;
@@ -651,10 +655,12 @@ export interface Database {
         Update: {
           id?: string;
           document_id?: string;
+          contract_id?: string | null;
           flag_type?: 'tight_deadline' | 'missing_clause' | 'unusual_condition' | 'unclear_language' | 'material_defect';
           severity?: 'low' | 'medium' | 'high';
           title?: string;
           explanation?: string;
+          audience?: 'buyer' | 'seller' | 'both';
           acknowledged?: boolean;
           acknowledged_by?: string | null;
           acknowledged_at?: string | null;
@@ -671,6 +677,7 @@ export interface Database {
           status: 'todo' | 'in_progress' | 'done' | 'overdue';
           severity: 'low' | 'medium' | 'high' | 'critical';
           category: string | null;
+          audience: 'buyer' | 'seller' | 'both';
           assignee_id: string | null;
           due_at: string | null;
           offset_days: number | null;
@@ -686,6 +693,7 @@ export interface Database {
           status?: 'todo' | 'in_progress' | 'done' | 'overdue';
           severity?: 'low' | 'medium' | 'high' | 'critical';
           category?: string | null;
+          audience?: 'buyer' | 'seller' | 'both';
           assignee_id?: string | null;
           due_at?: string | null;
           offset_days?: number | null;
@@ -701,6 +709,7 @@ export interface Database {
           status?: 'todo' | 'in_progress' | 'done' | 'overdue';
           severity?: 'low' | 'medium' | 'high' | 'critical';
           category?: string | null;
+          audience?: 'buyer' | 'seller' | 'both';
           assignee_id?: string | null;
           due_at?: string | null;
           offset_days?: number | null;
@@ -716,6 +725,7 @@ export interface Database {
           label: string;
           description: string | null;
           milestone_type: string | null;
+          audience: 'buyer' | 'seller' | 'both';
           due_at: string | null;
           completed_at: string | null;
           sort_order: number;
@@ -728,6 +738,7 @@ export interface Database {
           label: string;
           description?: string | null;
           milestone_type?: string | null;
+          audience?: 'buyer' | 'seller' | 'both';
           due_at?: string | null;
           completed_at?: string | null;
           sort_order?: number;
@@ -740,6 +751,7 @@ export interface Database {
           label?: string;
           description?: string | null;
           milestone_type?: string | null;
+          audience?: 'buyer' | 'seller' | 'both';
           due_at?: string | null;
           completed_at?: string | null;
           sort_order?: number;

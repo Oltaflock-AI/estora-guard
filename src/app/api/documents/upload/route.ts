@@ -251,10 +251,12 @@ export async function POST(request: NextRequest) {
       if (result.riskFlags.length > 0) {
         const flagRows = result.riskFlags.map((rf) => ({
           document_id: doc.id,
+          contract_id: linkedContractId, // null for primary AOS uploads; set when attaching disclosures
           flag_type: rf.flagType,
           severity: rf.severity,
           title: rf.title,
           explanation: rf.explanation,
+          audience: rf.audience ?? 'both',
         }));
 
         await serviceClient

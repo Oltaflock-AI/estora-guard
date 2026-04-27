@@ -19,6 +19,7 @@ import HealthBar from '@/components/HealthBar';
 import TimelineView from '@/components/TimelineView';
 import TaskList from '@/components/TaskList';
 import RiskFlagPanel from '@/components/RiskFlagPanel';
+import AttachDisclosureButton from '@/components/AttachDisclosureButton';
 import WireFraudBanner from '@/components/security/WireFraudBanner';
 import ClosingProximityFlag from '@/components/security/ClosingProximityFlag';
 import {
@@ -247,6 +248,7 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
                 <Paperclip className="w-4 h-4" />
                 Files
               </Link>
+              <AttachDisclosureButton contractId={contract.id} />
             </div>
           </div>
         </div>
@@ -260,7 +262,7 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
         <div className="lg:col-span-3">
           <div className="card">
             <h3 className="section-header mb-4">Timeline</h3>
-            <TimelineView items={timelineItems} />
+            <TimelineView items={timelineItems} perspective={perspective} />
           </div>
         </div>
 
@@ -453,13 +455,14 @@ export default function TransactionDetail({ data }: { data: TransactionData }) {
             <TaskList
               tasks={tasks}
               contractId={contract.id}
+              perspective={perspective}
               onHealthUpdate={handleHealthUpdate}
             />
           </div>
 
           {riskFlags.length > 0 && (
             <div className="card">
-              <RiskFlagPanel flags={riskFlags} />
+              <RiskFlagPanel flags={riskFlags} perspective={perspective} />
             </div>
           )}
         </div>

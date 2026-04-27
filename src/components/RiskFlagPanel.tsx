@@ -181,15 +181,19 @@ function RiskFlagCard({ flag, onAcknowledge }: RiskFlagCardProps) {
 
 interface RiskFlagPanelProps {
   flags: RiskFlag[];
+  perspective?: 'buyer' | 'seller';
   onAcknowledge?: (flagId: string, note: string) => Promise<void>;
 }
 
-export default function RiskFlagPanel({ flags, onAcknowledge }: RiskFlagPanelProps) {
-  const sorted = sortFlags(flags);
+export default function RiskFlagPanel({ flags, perspective, onAcknowledge }: RiskFlagPanelProps) {
+  const visible = perspective
+    ? flags.filter((f) => f.audience === perspective || f.audience === 'both')
+    : flags;
+  const sorted = sortFlags(visible);
 
-  const highCount = flags.filter((f) => f.severity === 'high' && !f.acknowledged).length;
-  const medCount = flags.filter((f) => f.severity === 'medium' && !f.acknowledged).length;
-  const lowCount = flags.filter((f) => f.severity === 'low' && !f.acknowledged).length;
+  const highCount = visible.filter((f) => f.severity === 'high' && !f.acknowledged).length;
+  const medCount = visible.filter((f) => f.severity === 'medium' && !f.acknowledged).length;
+  const lowCount = visible.filter((f) => f.severity === 'low' && !f.acknowledged).length;
   const total = highCount + medCount + lowCount;
 
   async function defaultAcknowledge(flagId: string, note: string) {
@@ -205,13 +209,15 @@ export default function RiskFlagPanel({ flags, onAcknowledge }: RiskFlagPanelPro
 
   const handleAcknowledge = onAcknowledge ?? defaultAcknowledge;
 
-  if (flags.length === 0) {
+  if (visible.length === 0) {
     return (
       <div className="card py-6 text-center">
         <CheckCircle className="w-8 h-8 text-success mx-auto mb-2" strokeWidth={1.5} />
         <p className="text-sm font-medium text-primary">No Risk Flags</p>
         <p className="text-xs text-secondary mt-1">
-          No issues were identified in this document.
+          {perspective
+            ? `No ${perspective}-side risks identified for this deal.`
+            : 'No issues were identified in this document.'}
         </p>
       </div>
     );
