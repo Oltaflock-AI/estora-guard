@@ -233,7 +233,14 @@ export async function POST(
 
   const purchasePrice = getNumeric(extractions, 'purchase_price');
   const downpayment = getNumeric(extractions, 'downpayment_amount');
-  const balance = purchasePrice > 0 ? purchasePrice - downpayment : 0;
+  // Prefer the PDF's stated balance over computing it. The PAR Form ASR has an
+  // explicit "Remaining Balance at Settlement" line; computing as
+  // (price - downpayment) breaks when downpayment is missing (the PAR form
+  // doesn't include a "Down Payment" line item — see project memory).
+  const extractedBalance = getNumeric(extractions, 'balance_due_at_closing');
+  const balance = extractedBalance > 0
+    ? extractedBalance
+    : (purchasePrice > 0 ? purchasePrice - downpayment : 0);
 
   const fundsRaw = getField(extractions, 'acceptable_funds') ?? 'certified_check';
   const validFunds = ['cash', 'certified_check', 'official_bank_check', 'wire', 'other'] as const;
@@ -338,8 +345,30 @@ export async function POST(
 
   // Default escrow amount to downpayment if not explicitly extracted
   const escrowAmount = getNumeric(extractions, 'amount_held') || downpayment;
-  const escrowAgent = getField(extractions, 'escrow_agent_name')
-    ?? getField(extractions, 'seller_attorney_name');
+  // PAR Form ASR Paragraph 11 always labels the "Escrow Agent:" inline. Claude
+  // sometimes drops this field or returns an empty string on a noisy run, so
+  // fall back to a regex over the LlamaParse markdown before degrading to
+  // seller_attorney_name. `??` would not catch empty strings, so trim + null.
+  const nullIfBlank = (v: string | null | undefined): string | null => {
+    const t = (v ?? '').trim();
+    return t.length > 0 ? t : null;
+  };
+  const extractAgentFromText = (text: string | null): string | null => {
+    if (!text) return null;
+    if (text.startsWith('[PDF document analyzed directly')) return null;
+    const m = text.match(
+      /Escrow\s*Agent\s*[:|]\s*\|?\s*([A-Z][A-Za-z'.\- ]{1,60}?)(?=\s*(?:\||\n|Escrow\s*Company|Escrow\s*Account|Escrow\s*Amount|$))/i
+    );
+    const name = m?.[1]?.trim();
+    return name && name.length > 1 ? name : null;
+  };
+  const escrowAgentFromExtraction = nullIfBlank(getField(extractions, 'escrow_agent_name'));
+  const escrowAgentFromRawText = escrowAgentFromExtraction
+    ? null
+    : extractAgentFromText(doc.raw_text);
+  const escrowAgent = escrowAgentFromExtraction
+    ?? escrowAgentFromRawText
+    ?? nullIfBlank(getField(extractions, 'seller_attorney_name'));
   const bankName = getField(extractions, 'bank_name') || 'TBD — Attorney Trust Account';
 
   if (escrowAmount > 0) {
@@ -374,6 +403,7 @@ export async function POST(
   // Build extracted dates map from PDF extractions for timeline overrides
   const dateFieldKeys = [
     'contract_date', 'closing_date', 'commitment_date',
+    'initial_deposit_due_date',
     'inspection_deadline', 'attorney_review_deadline',
     'mortgage_application_deadline', 'appraisal_deadline',
     'title_search_deadline', 'certificate_of_occupancy_deadline',

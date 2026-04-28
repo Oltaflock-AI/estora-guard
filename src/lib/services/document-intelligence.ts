@@ -42,7 +42,7 @@ Financial fields: purchase_price, downpayment_amount, balance_due_at_closing, ac
 
 Mortgage fields: mortgage_type, lender_name, principal_amount, interest_rate, monthly_payment, mortgage_term_years, pre_approval_letter_date, escrow_required, commitment_received
 
-Date fields: contract_date, closing_date, settlement_date, commitment_date, inspection_deadline, inspection_contingency_days, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
+Date fields: contract_date, closing_date, settlement_date, commitment_date, initial_deposit_due_date, inspection_deadline, inspection_contingency_days, attorney_review_deadline, mortgage_application_deadline, appraisal_deadline, title_search_deadline, certificate_of_occupancy_deadline
 
 Settlement fields: settlement_location, settlement_time
 
@@ -73,7 +73,9 @@ Return a JSON object with exactly two keys:
    - "severity": "low", "medium", or "high"
    - "title": short title (max 80 chars)
    - "explanation": 1-2 sentence explanation
-   - "audience": which side of the deal this risk threatens — one of "buyer", "seller", or "both". Pick "buyer" when the risk hurts the purchaser (e.g., tight financing window, hidden defect they'll inherit, wire fraud on deposit). Pick "seller" when the risk hurts the seller (e.g., disclosure-law liability, FIRPTA exposure, buyer default, broker commission dispute). Pick "both" only when the consequence falls on both parties roughly equally. Default to "both" if uncertain.`;
+   - "audience": which side of the deal this risk threatens — one of "buyer", "seller", or "both". Pick "buyer" when the risk hurts the purchaser (e.g., tight financing window, hidden defect they'll inherit, wire fraud on deposit). Pick "seller" when the risk hurts the seller (e.g., disclosure-law liability, FIRPTA exposure, buyer default, broker commission dispute). Pick "both" only when the consequence falls on both parties roughly equally. Default to "both" if uncertain.
+
+Before flagging a missing detail (post-mitigation reading, permit number, warranty doc, etc.), check additional comments and notes columns — if the fact is already disclosed in the document, do not flag it as missing. Do not emit duplicate flags about the same fact.`;
 
 const TEXT_EXTRACTION_PROMPT = `${PROMPT_PREAMBLE}
 
@@ -122,6 +124,17 @@ export class LlamaParseError extends Error {
 
 function stripMarkdownFences(raw: string): string {
   return raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+}
+
+// Claude occasionally wraps the JSON in prose ("Here is the extraction:" etc.)
+// or trailing commentary. Strip fences first, then carve out the outermost
+// {...} block so JSON.parse has a chance instead of failing on stray prose.
+function extractJsonBlock(raw: string): string {
+  const stripped = stripMarkdownFences(raw);
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+  if (first === -1 || last === -1 || last <= first) return stripped;
+  return stripped.slice(first, last + 1);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -221,7 +234,7 @@ async function runTextExtraction(text: string): Promise<ExtractionResult> {
     if (block.type !== 'text') {
       throw new ExtractionError('Claude returned non-text content.');
     }
-    responseText = stripMarkdownFences(block.text);
+    responseText = extractJsonBlock(block.text);
 
     try {
       const parsed = JSON.parse(responseText) as {
@@ -286,7 +299,7 @@ async function runDirectExtraction(pdfBuffer: Buffer): Promise<ExtractionResult>
     if (block.type !== 'text') {
       throw new ExtractionError('Claude returned non-text content.');
     }
-    responseText = stripMarkdownFences(block.text);
+    responseText = extractJsonBlock(block.text);
 
     try {
       const parsed = JSON.parse(responseText) as {

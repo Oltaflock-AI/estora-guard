@@ -171,6 +171,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
       category: 'Escrow',
       severity: 'high',
       audience: 'buyer',
+      date_override_key: 'initial_deposit_due_date',
     },
     {
       title: 'Order title insurance',
@@ -271,6 +272,18 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
   ],
 };
 
+// Date-only strings ("YYYY-MM-DD") must be anchored to noon UTC, not midnight.
+// `new Date('2026-04-24')` yields midnight UTC, which renders as the previous
+// day in any negative-offset timezone (e.g. EST). Noon UTC stays on the
+// intended calendar day in any plausible local timezone.
+function dateOnlyToDate(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (m) {
+    return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0));
+  }
+  return new Date(dateStr);
+}
+
 function computeDueDate(
   anchorDate: Date,
   closeDateStr: string | null,
@@ -281,22 +294,22 @@ function computeDueDate(
   if (item.date_override_key) {
     const extracted = extractedDates[item.date_override_key];
     if (extracted) {
-      return new Date(extracted);
+      return dateOnlyToDate(extracted);
     }
   }
 
   if (item.milestone_type === 'closing' && closeDateStr) {
-    return new Date(closeDateStr);
+    return dateOnlyToDate(closeDateStr);
   }
 
   if (item.offset_days < 0 && closeDateStr) {
-    const closeDate = new Date(closeDateStr);
-    closeDate.setDate(closeDate.getDate() + item.offset_days);
+    const closeDate = dateOnlyToDate(closeDateStr);
+    closeDate.setUTCDate(closeDate.getUTCDate() + item.offset_days);
     return closeDate;
   }
 
   const d = new Date(anchorDate);
-  d.setDate(d.getDate() + item.offset_days);
+  d.setUTCDate(d.getUTCDate() + item.offset_days);
   return d;
 }
 
@@ -314,7 +327,7 @@ export async function generateDefaultTimeline(
 
   // Use contract_date as anchor if available, otherwise today
   const anchorDateStr = extractedDates.contract_date;
-  const now = anchorDateStr ? new Date(anchorDateStr) : new Date();
+  const now = anchorDateStr ? dateOnlyToDate(anchorDateStr) : new Date();
 
   const tasksToInsert: TaskInsert[] = [];
   const timelineToInsert: TimelineInsert[] = [];

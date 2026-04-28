@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isValid, parse, parseISO } from 'date-fns';
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -9,22 +9,32 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+// Date-only strings ("YYYY-MM-DD") must be parsed as local dates, not UTC.
+// parseISO interprets them as midnight UTC, which then renders as the previous
+// day in any negative-offset timezone (e.g. EST shows June 15 as June 14).
+function parseDateString(dateStr: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return parse(dateStr, 'yyyy-MM-dd', new Date());
+  }
+  return parseISO(dateStr);
+}
+
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
-  const date = parseISO(dateStr);
+  const date = parseDateString(dateStr);
   if (!isValid(date)) return '—';
   return format(date, 'MMM d, yyyy');
 }
 
 export function formatDateShort(dateStr: string | null): string {
   if (!dateStr) return '—';
-  const date = parseISO(dateStr);
+  const date = parseDateString(dateStr);
   if (!isValid(date)) return '—';
   return format(date, 'MMM d');
 }
 
 export function formatRelativeTime(dateStr: string): string {
-  const date = parseISO(dateStr);
+  const date = parseDateString(dateStr);
   if (!isValid(date)) return '';
   return formatDistanceToNow(date, { addSuffix: true });
 }
