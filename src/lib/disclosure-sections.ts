@@ -20,21 +20,22 @@ export const DISCLOSURE_SECTIONS: Record<string, DisclosureSection[]> = {
       id: 'property_seller',
       label: 'Property & Seller',
       paragraph: 'Form Header',
+      // Only fields the SPD form's header actually contains. school_district
+      // and tax_parcel_id are AOS-only; seller_disclosure_attached is a
+      // meta-flag pulled from the AOS reference to the SPD, not from the SPD
+      // itself; street_2 is optional and absent when the address has no
+      // apt/unit line.
       fieldNames: [
         'document_kind',
         'street_1',
-        'street_2',
         'city',
         'state',
         'postal_code',
         'municipality',
         'county',
-        'school_district',
-        'tax_parcel_id',
         'year_built',
         'seller_first_name',
         'seller_last_name',
-        'seller_disclosure_attached',
       ],
     },
     {
@@ -65,10 +66,12 @@ export const DISCLOSURE_SECTIONS: Record<string, DisclosureSection[]> = {
       id: 's12_hazardous',
       label: 'Hazardous & Environmental',
       paragraph: 'Section 12',
+      // SPD §12 has lead-paint awareness (12a), asbestos, radon, mold, UST,
+      // formaldehyde, landfill, pests. lead_based_paint_disclosure_attached
+      // is an AOS attachment flag, not a labeled SPD §12 field — exclude it.
       fieldNames: [
         'radon_mitigation_present',
         'radon_test_value_pci_l',
-        'lead_based_paint_disclosure_attached',
       ],
     },
   ],
@@ -77,10 +80,11 @@ export const DISCLOSURE_SECTIONS: Record<string, DisclosureSection[]> = {
       id: 'property_parties',
       label: 'Property & Parties',
       paragraph: 'Form Header',
+      // street_2 is optional and absent for addresses with no apt/unit line,
+      // so excluding it from the expected set keeps the completion ring honest.
       fieldNames: [
         'document_kind',
         'street_1',
-        'street_2',
         'city',
         'state',
         'postal_code',
