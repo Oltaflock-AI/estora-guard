@@ -418,19 +418,27 @@ export async function POST(
     const timelineTemplate = isNY ? 'ny_residential' : 'pa_residential';
     await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date, timelineTemplate, extractedDates);
     // Auto-complete "Execute contract" — the AOS was already signed when uploaded.
-    // Update both the task and the timeline_item; the timeline view marks an
-    // entry as Overdue based on completed_at IS NULL, not on tasks.status.
+    // tasks has no completed_at column (just status); timeline_items does.
+    // Update each table with the columns it actually owns, otherwise Supabase
+    // rejects the unknown-column write and status silently stays 'todo',
+    // which the task list's `due_at < now` branch then renders as Overdue.
     const completedAt = new Date().toISOString();
-    await serviceClient
+    const { error: taskUpdErr } = await serviceClient
       .from('tasks')
-      .update({ status: 'done', completed_at: completedAt } as never)
+      .update({ status: 'done' } as never)
       .eq('contract_id', contract.id)
       .eq('title', 'Execute contract');
-    await serviceClient
+    if (taskUpdErr) {
+      console.error('Auto-complete tasks.status failed:', taskUpdErr.message);
+    }
+    const { error: tlUpdErr } = await serviceClient
       .from('timeline_items')
       .update({ completed_at: completedAt } as never)
       .eq('contract_id', contract.id)
       .eq('label', 'Execute contract');
+    if (tlUpdErr) {
+      console.error('Auto-complete timeline_items.completed_at failed:', tlUpdErr.message);
+    }
   } catch (err) {
     console.error('Timeline generation failed:', err);
   }
