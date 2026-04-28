@@ -18,6 +18,13 @@ interface TemplateItem {
   milestone_type?: string;
   /** Key into extractedDates to override offset_days with an actual date from the PDF */
   date_override_key?: string;
+  /**
+   * 'execution' (default) → due = contract_date + offset_days.
+   * 'closing'             → due = closing_date + offset_days. Use for items
+   *   delivered AT settlement (FIRPTA cert, smoke detector affidavit) where
+   *   anchoring to execution would land the date weeks too early.
+   */
+  anchor?: 'execution' | 'closing';
 }
 
 /** Map of extraction field names to ISO date strings from the PDF */
@@ -221,8 +228,9 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
     },
     {
       title: 'Smoke detector & CO affidavit',
-      offset_days: 50,
-      description: 'Seller provides smoke detector and carbon monoxide detector affidavit per Paragraph 15',
+      offset_days: 0,
+      anchor: 'closing',
+      description: 'Seller provides smoke detector and carbon monoxide detector affidavit at settlement (Para 15)',
       category: 'Compliance',
       severity: 'low',
       audience: 'seller',
@@ -255,6 +263,7 @@ const TIMELINE_TEMPLATES: Record<string, TemplateItem[]> = {
     {
       title: 'FIRPTA non-foreign certification',
       offset_days: 0,
+      anchor: 'closing',
       description: 'Seller delivers FIRPTA non-foreign person certification at settlement (Para 15)',
       category: 'Compliance',
       severity: 'medium',
@@ -300,6 +309,15 @@ function computeDueDate(
 
   if (item.milestone_type === 'closing' && closeDateStr) {
     return dateOnlyToDate(closeDateStr);
+  }
+
+  // Items explicitly anchored to closing (FIRPTA cert, smoke detector
+  // affidavit, etc.) — closing_date + offset_days. Handles offset_days >= 0
+  // which the negative-offset branch below does not cover.
+  if (item.anchor === 'closing' && closeDateStr) {
+    const closeDate = dateOnlyToDate(closeDateStr);
+    closeDate.setUTCDate(closeDate.getUTCDate() + item.offset_days);
+    return closeDate;
   }
 
   if (item.offset_days < 0 && closeDateStr) {
@@ -399,6 +417,13 @@ interface DerivedFlag {
   flagType: 'tight_deadline' | 'missing_clause' | 'unusual_condition' | 'unclear_language' | 'material_defect';
   severity: 'low' | 'medium' | 'high';
   audience: 'buyer' | 'seller' | 'both';
+  /**
+   * Topic keywords used for dedup against pre-existing flags (e.g. ones the
+   * LLM extractor emitted on the AOS upload). If any of these substrings
+   * appear in an existing flag's title or explanation, the rule-engine
+   * version is skipped so we don't duplicate the same fact across two flags.
+   */
+  topicKeywords: string[];
 }
 
 function asBool(v: string | null | undefined): boolean | null {
@@ -454,7 +479,7 @@ function evaluateRules(fields: Record<string, string | null>): {
     });
   }
 
-  // Rule 3 — Deck permit number disclosed → seller deliverable (seller, task only)
+  // Rule 3 — Deck permit number disclosed → seller deliverable (seller)
   const deckPermit = (fields.deck_permit_number ?? '').trim();
   if (deckPermit && deckPermit.toLowerCase() !== 'none' && deckPermit.toLowerCase() !== 'n/a') {
     tasks.push({
@@ -466,31 +491,42 @@ function evaluateRules(fields: Record<string, string | null>): {
       severity: 'low',
       audience: 'seller',
       offsetDaysFromClose: -7,
-      alsoOnTimeline: false,
+      alsoOnTimeline: true,
     });
   }
 
-  // Rule 4 — Radon test value at or above EPA action level → flag (buyer)
+  // Rule 4 — Radon test value at or above EPA action level → flag (buyer).
+  // The explanation acknowledges post-mitigation status when present; both
+  // sides care about lingering exposure, but the buyer carries the primary
+  // due-diligence burden, so audience stays 'buyer'.
   const radonValue = asNum(fields.radon_test_value_pci_l);
   if (radonValue !== null && radonValue >= 4.0) {
+    const mitigated = asBool(fields.radon_mitigation_present) === true;
     flags.push({
       title: `Radon tested at ${radonValue} pCi/L — at or above EPA action level`,
-      explanation: `Initial radon test reported ${radonValue} pCi/L (EPA action level is 4.0 pCi/L). Mitigation system was installed, but buyer should request the post-mitigation reading and verify ongoing system operation before settlement.`,
+      explanation: mitigated
+        ? `Initial test reported ${radonValue} pCi/L (EPA action level is 4.0 pCi/L). A mitigation system has been installed; buyer should confirm ongoing operation and request the most recent post-mitigation reading at the walkthrough.`
+        : `Initial test reported ${radonValue} pCi/L (EPA action level is 4.0 pCi/L). No mitigation system disclosed — buyer should require remediation before settlement or negotiate credit for installation.`,
       flagType: 'material_defect',
       severity: 'medium',
       audience: 'buyer',
+      topicKeywords: ['radon', 'pCi/L', 'pci/l'],
     });
   }
 
-  // Rule 5 — Basement wall cracks disclosed → flag (buyer)
+  // Rule 5 — Basement wall cracks disclosed → flag.
+  // Audience 'both': cracks are a buyer defect concern AND a seller
+  // disclosure-law liability under PA Real Estate Seller Disclosure Law
+  // (68 Pa. C.S. §7301) if later challenged as undersold.
   if (asBool(fields.basement_wall_cracks_disclosed) === true) {
     flags.push({
       title: 'Hairline cracks disclosed in basement walls',
       explanation:
-        'Seller disclosed cracks in basement walls (described as cosmetic). Buyer should verify with a qualified inspector during the inspection contingency period.',
+        'Seller disclosed cracks in basement walls (described as cosmetic). Buyer should verify with a qualified inspector during the inspection contingency period; seller should retain records of the disclosure for PA Seller Disclosure Law compliance.',
       flagType: 'material_defect',
       severity: 'low',
-      audience: 'buyer',
+      audience: 'both',
+      topicKeywords: ['basement wall', 'basement crack', 'hairline crack'],
     });
   }
 
@@ -503,6 +539,7 @@ function evaluateRules(fields: Record<string, string | null>): {
       flagType: 'material_defect',
       severity: 'low',
       audience: 'buyer',
+      topicKeywords: ['waterproof', 'sump pump'],
     });
   }
 
@@ -519,7 +556,48 @@ function evaluateRules(fields: Record<string, string | null>): {
       flagType: 'unusual_condition',
       severity: 'medium',
       audience: 'buyer',
+      topicKeywords: ['lead-based paint', 'lead paint', 'pre-1978'],
     });
+  }
+
+  // ── PA AOS boilerplate rules (universal to every PAR Form ASR) ────────────
+  //
+  // These flags are not document-specific; they reflect obligations and risks
+  // baked into the PAR Form ASR template itself. We emit them whenever an
+  // agreement_of_sale extraction is present so they surface deterministically
+  // on every PA deal, regardless of whether Claude happens to flag them.
+
+  const docKind = (fields.document_kind ?? '').toLowerCase();
+  const govState = (fields.governing_law_state ?? '').toUpperCase();
+  const isPaAos = docKind === 'agreement_of_sale' && (govState === 'PA' || govState === '');
+
+  if (isPaAos) {
+    // PAR Form ASR §13(A): seller has only 3 days to respond to a buyer's
+    // Corrective Proposal; buyer then has 2 days to terminate or accept.
+    // This is a real seller-side time pressure on every PA deal.
+    flags.push({
+      title: 'Tight 3-day window to respond to buyer Corrective Proposal',
+      explanation:
+        'Under PAR Form ASR §13(A), if the buyer submits a Corrective Proposal during the inspection contingency period, the seller has only 3 days to agree, counter, or reject. No response is treated as rejection. Plan inspector availability and counsel review accordingly.',
+      flagType: 'tight_deadline',
+      severity: 'medium',
+      audience: 'seller',
+      topicKeywords: ['corrective proposal', '3-day', '3 day'],
+    });
+
+    // PAR Form ASR §15: smoke-detector / CO affidavit must be delivered AT
+    // settlement. This is a compliance burden the seller often forgets.
+    if (asBool(fields.smoke_detector_affidavit_required) !== false) {
+      flags.push({
+        title: 'Smoke detector / CO affidavit required at settlement',
+        explanation:
+          'PAR Form ASR §15 requires the seller to deliver a signed smoke-detector and CO-detector affidavit at settlement. Missing or stale affidavits are a common day-of-closing delay — confirm the form is prepared with current dates a week before settlement.',
+        flagType: 'missing_clause',
+        severity: 'low',
+        audience: 'seller',
+        topicKeywords: ['smoke detector', 'co affidavit', 'co detector'],
+      });
+    }
   }
 
   return { tasks, flags };
@@ -576,10 +654,12 @@ export async function applyDisclosureRules(
       .maybeSingle();
     if (existingTask) continue;
 
+    // Anchor to noon UTC of the closing date (same approach as the template
+    // path) so timezone-shifted rendering doesn't drop the date by a day.
     const dueAt = closeDateStr
       ? (() => {
-          const d = new Date(closeDateStr);
-          d.setDate(d.getDate() + t.offsetDaysFromClose);
+          const d = dateOnlyToDate(closeDateStr);
+          d.setUTCDate(d.getUTCDate() + t.offsetDaysFromClose);
           return d.toISOString();
         })()
       : null;
@@ -644,17 +724,30 @@ export async function applyDisclosureRules(
     }
   }
 
-  // 5. Insert risk flags (dedupe by contract_id + title).
+  // 5. Insert risk flags. Dedupe at two levels: exact title (idempotency on
+  // re-running the rules engine) AND topic keywords (suppress the rule's
+  // version when the LLM extractor already emitted a flag about the same
+  // fact, even with different wording). The keyword check is case-insensitive
+  // and runs against existing flags' title + explanation.
   let flagsAdded = 0;
 
+  const { data: existingFlags } = await supabase
+    .from('risk_flags')
+    .select('title, explanation')
+    .eq('contract_id', contractId);
+  const existingFlagText = (
+    (existingFlags ?? []) as Array<{ title: string; explanation: string }>
+  ).map((row) => `${row.title}\n${row.explanation}`.toLowerCase());
+
   for (const f of derivedFlags) {
-    const { data: existingFlag } = await supabase
-      .from('risk_flags')
-      .select('id')
-      .eq('contract_id', contractId)
-      .eq('title', f.title)
-      .maybeSingle();
-    if (existingFlag) continue;
+    if (existingFlagText.some((text) => text === f.title.toLowerCase() + '\n' + f.explanation.toLowerCase())) {
+      continue;
+    }
+    const matchesTopic = f.topicKeywords.some((kw) => {
+      const k = kw.toLowerCase();
+      return existingFlagText.some((text) => text.includes(k));
+    });
+    if (matchesTopic) continue;
 
     const flagRow: RiskFlagInsert = {
       document_id: sourceDocumentId,
@@ -673,6 +766,9 @@ export async function applyDisclosureRules(
       continue;
     }
     flagsAdded++;
+    // Append to local cache so subsequent rules in this same batch don't
+    // re-emit the same topic.
+    existingFlagText.push(`${f.title}\n${f.explanation}`.toLowerCase());
   }
 
   return { tasksAdded, timelineAdded, flagsAdded };

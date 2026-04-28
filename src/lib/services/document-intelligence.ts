@@ -75,7 +75,20 @@ Return a JSON object with exactly two keys:
    - "explanation": 1-2 sentence explanation
    - "audience": which side of the deal this risk threatens — one of "buyer", "seller", or "both". Pick "buyer" when the risk hurts the purchaser (e.g., tight financing window, hidden defect they'll inherit, wire fraud on deposit). Pick "seller" when the risk hurts the seller (e.g., disclosure-law liability, FIRPTA exposure, buyer default, broker commission dispute). Pick "both" only when the consequence falls on both parties roughly equally. Default to "both" if uncertain.
 
-Before flagging a missing detail (post-mitigation reading, permit number, warranty doc, etc.), check additional comments and notes columns — if the fact is already disclosed in the document, do not flag it as missing. Do not emit duplicate flags about the same fact.`;
+Before flagging a missing detail (post-mitigation reading, permit number, warranty doc, etc.), check additional comments and notes columns — if the fact is already disclosed in the document, do not flag it as missing. Do not emit duplicate flags about the same fact.
+
+**Do NOT emit the following flags — these are derived deterministically by Estora's rules engine and adding them creates duplicates:**
+- Radon test value at or above EPA action level (any flag whose subject is the radon reading itself or post-mitigation status)
+- Hairline / cosmetic basement wall cracks
+- Basement waterproofing absence or sump-pump-only setup
+- Roof warranty transferability
+- Deck permit documentation
+- ADT or other leased security-system equipment that buyer must assume or cancel
+- 3-day seller response window or 2-day buyer decision window on Corrective Proposals
+- Smoke-detector / CO affidavit required at settlement
+- Pre-1978 property with buyer waiving lead-paint inspection
+
+Focus your flags on items the rules engine cannot derive: ambiguous language in custom riders, unusual financing terms, missing standard clauses, or risks visible only by reading the document holistically.`;
 
 const TEXT_EXTRACTION_PROMPT = `${PROMPT_PREAMBLE}
 

@@ -417,12 +417,20 @@ export async function POST(
   try {
     const timelineTemplate = isNY ? 'ny_residential' : 'pa_residential';
     await generateDefaultTimeline(serviceClient, contract.id, contract.closing_date, timelineTemplate, extractedDates);
-    // Auto-complete "Execute contract" since the AOS was already signed when uploaded
+    // Auto-complete "Execute contract" — the AOS was already signed when uploaded.
+    // Update both the task and the timeline_item; the timeline view marks an
+    // entry as Overdue based on completed_at IS NULL, not on tasks.status.
+    const completedAt = new Date().toISOString();
     await serviceClient
       .from('tasks')
-      .update({ status: 'done', completed_at: new Date().toISOString() } as never)
+      .update({ status: 'done', completed_at: completedAt } as never)
       .eq('contract_id', contract.id)
       .eq('title', 'Execute contract');
+    await serviceClient
+      .from('timeline_items')
+      .update({ completed_at: completedAt } as never)
+      .eq('contract_id', contract.id)
+      .eq('label', 'Execute contract');
   } catch (err) {
     console.error('Timeline generation failed:', err);
   }
