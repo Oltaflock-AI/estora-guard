@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { generateDefaultTimeline, type ExtractedDates } from '@/lib/services/timeline-service';
+import { generateDefaultTimeline, applyDisclosureRules, type ExtractedDates } from '@/lib/services/timeline-service';
 import { computeHealthScore } from '@/lib/services/health-service';
 import { createAuditEvent } from '@/lib/services/audit-service';
 import type { Database } from '@/lib/supabase/database.types';
@@ -433,6 +433,17 @@ export async function POST(
       .eq('label', 'Execute contract');
   } catch (err) {
     console.error('Timeline generation failed:', err);
+  }
+
+  // Run the rules engine on the AOS itself so PA-AOS boilerplate flags
+  // (3-day Corrective Proposal response, smoke-detector affidavit, etc.) fire
+  // on day one, not only after a disclosure is later attached. The same
+  // engine runs again on disclosure upload to layer on SPD-/LBP-derived
+  // tasks; topic-keyword dedup ensures no double-emission.
+  try {
+    await applyDisclosureRules(serviceClient, contract.id, documentId);
+  } catch (err) {
+    console.error('Disclosure rules (AOS path) failed:', err);
   }
 
   try {

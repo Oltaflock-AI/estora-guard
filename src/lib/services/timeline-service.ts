@@ -440,7 +440,10 @@ function asNum(v: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function evaluateRules(fields: Record<string, string | null>): {
+function evaluateRules(
+  fields: Record<string, string | null>,
+  documentKinds: Set<string> = new Set()
+): {
   tasks: DerivedTask[];
   flags: DerivedFlag[];
 } {
@@ -567,9 +570,11 @@ function evaluateRules(fields: Record<string, string | null>): {
   // agreement_of_sale extraction is present so they surface deterministically
   // on every PA deal, regardless of whether Claude happens to flag them.
 
-  const docKind = (fields.document_kind ?? '').toLowerCase();
+  // documentKinds is the SET of all document_kinds linked to this contract,
+  // collected upstream. Using a single fields.document_kind would last-write
+  // to whatever doc was processed last (often the SPD), missing the AOS.
   const govState = (fields.governing_law_state ?? '').toUpperCase();
-  const isPaAos = docKind === 'agreement_of_sale' && (govState === 'PA' || govState === '');
+  const isPaAos = documentKinds.has('agreement_of_sale') && (govState === 'PA' || govState === '');
 
   if (isPaAos) {
     // PAR Form ASR §13(A): seller has only 3 days to respond to a buyer's
@@ -620,13 +625,23 @@ export async function applyDisclosureRules(
 
   const { data: extractionRows } = await supabase
     .from('extractions')
-    .select('field_name, field_value')
+    .select('document_id, field_name, field_value')
     .in('document_id', docIds);
 
   const fields: Record<string, string | null> = {};
-  for (const row of (extractionRows ?? []) as Array<{ field_name: string; field_value: string | null }>) {
-    // Last-wins; later docs (e.g., SPD) override AOS for shared fields like year_built.
+  // Collect every document_kind seen across the contract's docs so rules
+  // gated on "did an AOS exist?" don't get clobbered when the SPD overwrites
+  // fields.document_kind under last-wins semantics.
+  const documentKinds = new Set<string>();
+  for (const row of (extractionRows ?? []) as Array<{
+    document_id: string;
+    field_name: string;
+    field_value: string | null;
+  }>) {
     fields[row.field_name] = row.field_value;
+    if (row.field_name === 'document_kind' && row.field_value) {
+      documentKinds.add(row.field_value.toLowerCase());
+    }
   }
 
   // 2. Pull contract closing_date as the anchor for relative due dates.
@@ -638,7 +653,7 @@ export async function applyDisclosureRules(
   const closeDateStr = (contractRow as { closing_date: string | null } | null)?.closing_date ?? null;
 
   // 3. Evaluate the rule set.
-  const { tasks: derivedTasks, flags: derivedFlags } = evaluateRules(fields);
+  const { tasks: derivedTasks, flags: derivedFlags } = evaluateRules(fields, documentKinds);
 
   // 4. Insert tasks (idempotent via dedupe_key).
   let tasksAdded = 0;
